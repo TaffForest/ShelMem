@@ -31,3 +31,16 @@ class VerifyResult:
     verified: bool
     content_hash: str
     expected_hash: str
+
+
+@dataclass
+class SearchResult:
+    id: str
+    agent_id: str
+    context: str
+    memory_preview: Optional[str]
+    memory_type: Optional[str]
+    content_hash: Optional[str]
+    aptos_tx_hash: Optional[str]
+    created_at: str
+    similarity: float

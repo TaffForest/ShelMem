@@ -6,7 +6,8 @@ import time
 
 from .shelby import ShelbyStorage, compute_hash
 from .supabase_client import MemoryMetadata
-from .types import WriteResult, MemoryRecord, VerifyResult
+from .types import WriteResult, MemoryRecord, VerifyResult, SearchResult
+from .embeddings import EmbeddingProvider
 
 
 class ShelMem:
@@ -15,6 +16,7 @@ class ShelMem:
     Memory content is stored on Shelby Protocol's decentralised hot storage.
     Metadata (agent_id, context, timestamps) is stored in Supabase.
     Every write is anchored on Aptos with a content hash for tamper detection.
+    If an embedding provider is configured, semantic search is available.
     """
 
     def __init__(
@@ -25,6 +27,7 @@ class ShelMem:
         aptos_private_key: str | None = None,
         network: str = "testnet",
         mock: bool | None = None,
+        embedding_provider: EmbeddingProvider | None = None,
     ):
         self._storage = ShelbyStorage(
             api_key=shelby_api_key,
@@ -33,6 +36,7 @@ class ShelMem:
             mock=mock,
         )
         self._metadata = MemoryMetadata(supabase_url, supabase_key)
+        self._embed = embedding_provider
 
     async def write(
         self,
@@ -49,7 +53,12 @@ class ShelMem:
         blob_name = f"{agent_id}_{int(time.time() * 1000)}"
         result = await self._storage.upload(data, blob_name)
 
-        # 3. Record metadata in Supabase with content hash
+        # 3. Generate embedding if provider configured
+        embedding = None
+        if self._embed:
+            embedding = await self._embed(memory)
+
+        # 4. Record metadata in Supabase with content hash + embedding
         preview = memory[:200]
         row = self._metadata.insert(
             agent_id=agent_id,
@@ -60,6 +69,7 @@ class ShelMem:
             content_hash=result.content_hash,
             memory_type=memory_type,
             metadata=metadata,
+            embedding=embedding,
         )
 
         return WriteResult(
@@ -134,6 +144,38 @@ class ShelMem:
                 content_hash="",
                 expected_hash=expected_hash,
             )
+
+    async def search(
+        self,
+        query: str,
+        agent_id: str | None = None,
+        limit: int = 10,
+        threshold: float = 0.5,
+    ) -> list[SearchResult]:
+        """Semantic search — find memories by meaning using vector similarity.
+
+        Requires an embedding_provider to be configured.
+        """
+        if not self._embed:
+            raise RuntimeError("Semantic search requires an embedding_provider")
+
+        query_embedding = await self._embed(query)
+        rows = self._metadata.search(query_embedding, agent_id, threshold, limit)
+
+        return [
+            SearchResult(
+                id=r["id"],
+                agent_id=r["agent_id"],
+                context=r["context"],
+                memory_preview=r.get("memory_preview"),
+                memory_type=r.get("memory_type"),
+                content_hash=r.get("content_hash"),
+                aptos_tx_hash=r.get("aptos_tx_hash"),
+                created_at=r["created_at"],
+                similarity=r["similarity"],
+            )
+            for r in rows
+        ]
 
     def delete(self, memory_id: str) -> None:
         self._metadata.delete(memory_id)

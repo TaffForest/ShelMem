@@ -2,7 +2,8 @@ from __future__ import annotations
 
 """Supabase metadata client for memory records."""
 
-from typing import Optional
+import json
+from typing import Optional, List
 from supabase import create_client, Client
 
 
@@ -20,21 +21,25 @@ class MemoryMetadata:
         content_hash: str,
         memory_type: str = "observation",
         metadata: Optional[dict] = None,
+        embedding: Optional[List[float]] = None,
     ) -> dict:
+        insert_data = {
+            "agent_id": agent_id,
+            "context": context,
+            "memory_preview": memory_preview,
+            "shelby_object_id": shelby_object_id,
+            "aptos_tx_hash": aptos_tx_hash,
+            "content_hash": content_hash,
+            "memory_type": memory_type,
+            "metadata": metadata or {},
+        }
+
+        if embedding is not None:
+            insert_data["embedding"] = json.dumps(embedding)
+
         result = (
             self.client.table("memories")
-            .insert(
-                {
-                    "agent_id": agent_id,
-                    "context": context,
-                    "memory_preview": memory_preview,
-                    "shelby_object_id": shelby_object_id,
-                    "aptos_tx_hash": aptos_tx_hash,
-                    "content_hash": content_hash,
-                    "memory_type": memory_type,
-                    "metadata": metadata or {},
-                }
-            )
+            .insert(insert_data)
             .execute()
         )
         return result.data[0]
@@ -59,6 +64,24 @@ class MemoryMetadata:
             q = q.eq("memory_type", memory_type)
 
         result = q.execute()
+        return result.data or []
+
+    def search(
+        self,
+        query_embedding: List[float],
+        agent_id: Optional[str] = None,
+        threshold: float = 0.5,
+        limit: int = 10,
+    ) -> list[dict]:
+        result = self.client.rpc(
+            "match_memories",
+            {
+                "query_embedding": json.dumps(query_embedding),
+                "filter_agent_id": agent_id,
+                "match_threshold": threshold,
+                "match_count": limit,
+            },
+        ).execute()
         return result.data or []
 
     def get_by_id(self, memory_id: str) -> Optional[dict]:

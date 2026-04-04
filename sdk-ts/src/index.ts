@@ -1,15 +1,18 @@
 import { ShelbyStorage, computeHash } from './shelby.js';
 import { MemoryMetadata } from './supabase.js';
-import type { ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult } from './types.js';
+import type { ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult, SearchResult } from './types.js';
 
-export type { ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult } from './types.js';
+export type { ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult, SearchResult } from './types.js';
 export { computeHash } from './shelby.js';
+export { openaiEmbeddings } from './embeddings.js';
+export type { EmbeddingProvider } from './embeddings.js';
 export { createShelMemTools } from './integrations/vercel-ai.js';
 export type { ShelMemToolsConfig } from './integrations/vercel-ai.js';
 
 export class ShelMem {
   private storage: ShelbyStorage;
   private metadata: MemoryMetadata;
+  private embed?: (text: string) => Promise<number[]>;
 
   constructor(config: ShelMemConfig) {
     this.storage = new ShelbyStorage({
@@ -20,11 +23,13 @@ export class ShelMem {
     });
 
     this.metadata = new MemoryMetadata(config.supabaseUrl, config.supabaseKey);
+    this.embed = config.embeddingProvider;
   }
 
   /**
    * Write a memory to decentralised storage with on-chain proof.
    * Content is hashed (SHA-256) before upload for tamper detection.
+   * If an embedding provider is configured, a vector embedding is stored for semantic search.
    */
   async write(
     agent_id: string,
@@ -33,15 +38,18 @@ export class ShelMem {
     memory_type: MemoryType = 'observation',
     metadata?: Record<string, unknown>
   ): Promise<WriteResult> {
-    // 1. Serialise memory to bytes
     const encoder = new TextEncoder();
     const bytes = encoder.encode(memory);
 
-    // 2. Upload to Shelby — hash is computed inside upload
     const blobName = `${agent_id}_${Date.now()}`;
     const { shelbyAddress, shelbyProof, contentHash } = await this.storage.upload(bytes, blobName);
 
-    // 3. Record metadata in Supabase with content hash
+    // Generate embedding if provider is configured
+    let embedding: number[] | undefined;
+    if (this.embed) {
+      embedding = await this.embed(memory);
+    }
+
     const preview = memory.slice(0, 200);
 
     const row = await this.metadata.insert({
@@ -53,6 +61,7 @@ export class ShelMem {
       content_hash: contentHash,
       memory_type,
       metadata,
+      embedding,
     });
 
     return {
@@ -65,9 +74,8 @@ export class ShelMem {
   }
 
   /**
-   * Recall memories for an agent. Each memory is verified against its
-   * stored content hash — if the content was tampered with on Shelby,
-   * verified will be false.
+   * Recall memories for an agent by metadata filters.
+   * Each memory is verified against its stored content hash.
    */
   async recall(
     agent_id: string,
@@ -75,10 +83,8 @@ export class ShelMem {
     limit: number = 10,
     memory_type?: MemoryType
   ): Promise<MemoryRecord[]> {
-    // 1. Query Supabase for metadata
     const rows = await this.metadata.query(agent_id, context, memory_type, limit);
 
-    // 2. For each row, retrieve content and verify hash
     const decoder = new TextDecoder();
     const results: MemoryRecord[] = [];
 
@@ -90,15 +96,12 @@ export class ShelMem {
         const bytes = await this.storage.download(row.shelby_object_id);
         memoryText = decoder.decode(bytes);
 
-        // 3. Verify content integrity
         if (row.content_hash) {
           const actualHash = computeHash(bytes);
           verified = actualHash === row.content_hash;
         }
       } catch {
-        // If download fails (e.g. mock mode), use preview
         memoryText = row.memory_preview ?? '[content unavailable]';
-        // Can't verify without content — leave as null
         verified = null;
       }
 
@@ -114,6 +117,29 @@ export class ShelMem {
     }
 
     return results;
+  }
+
+  /**
+   * Semantic search — find memories by meaning using vector similarity.
+   * Requires an embedding provider to be configured.
+   *
+   * @param query - Natural language query (e.g. "what do I know about ETH?")
+   * @param agent_id - Optional agent filter
+   * @param limit - Max results (default 10)
+   * @param threshold - Minimum similarity 0-1 (default 0.5)
+   */
+  async search(
+    query: string,
+    agent_id?: string,
+    limit: number = 10,
+    threshold: number = 0.5
+  ): Promise<SearchResult[]> {
+    if (!this.embed) {
+      throw new Error('Semantic search requires an embeddingProvider in config');
+    }
+
+    const queryEmbedding = await this.embed(query);
+    return this.metadata.search(queryEmbedding, agent_id, threshold, limit);
   }
 
   /**

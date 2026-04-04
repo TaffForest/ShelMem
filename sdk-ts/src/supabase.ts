@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { MemoryRow, MemoryType } from './types.js';
+import type { MemoryRow, MemoryType, SearchResult } from './types.js';
 
 export class MemoryMetadata {
   private client: SupabaseClient;
@@ -17,19 +17,26 @@ export class MemoryMetadata {
     content_hash: string;
     memory_type: MemoryType;
     metadata?: Record<string, unknown>;
+    embedding?: number[];
   }): Promise<MemoryRow> {
+    const insertData: Record<string, unknown> = {
+      agent_id: row.agent_id,
+      context: row.context,
+      memory_preview: row.memory_preview,
+      shelby_object_id: row.shelby_object_id,
+      aptos_tx_hash: row.aptos_tx_hash,
+      content_hash: row.content_hash,
+      memory_type: row.memory_type,
+      metadata: row.metadata ?? {},
+    };
+
+    if (row.embedding) {
+      insertData.embedding = JSON.stringify(row.embedding);
+    }
+
     const { data, error } = await this.client
       .from('memories')
-      .insert({
-        agent_id: row.agent_id,
-        context: row.context,
-        memory_preview: row.memory_preview,
-        shelby_object_id: row.shelby_object_id,
-        aptos_tx_hash: row.aptos_tx_hash,
-        content_hash: row.content_hash,
-        memory_type: row.memory_type,
-        metadata: row.metadata ?? {},
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -60,6 +67,23 @@ export class MemoryMetadata {
     const { data, error } = await query;
     if (error) throw new Error(`Supabase query failed: ${error.message}`);
     return (data ?? []) as MemoryRow[];
+  }
+
+  async search(
+    queryEmbedding: number[],
+    agentId?: string,
+    threshold: number = 0.5,
+    limit: number = 10
+  ): Promise<SearchResult[]> {
+    const { data, error } = await this.client.rpc('match_memories', {
+      query_embedding: JSON.stringify(queryEmbedding),
+      filter_agent_id: agentId ?? null,
+      match_threshold: threshold,
+      match_count: limit,
+    });
+
+    if (error) throw new Error(`Vector search failed: ${error.message}`);
+    return (data ?? []) as SearchResult[];
   }
 
   async getById(id: string): Promise<MemoryRow | null> {

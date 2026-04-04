@@ -7,6 +7,7 @@ export interface ShelMemConfig {
   supabaseKey: string;
   network?: 'testnet' | 'shelbynet';
   mock?: boolean;
+  embeddingProvider?: (text: string) => Promise<number[]>;
 }
 
 export interface WriteResult {
@@ -46,4 +47,16 @@ export interface MemoryRow {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+export interface SearchResult {
+  id: string;
+  agent_id: string;
+  context: string;
+  memory_preview: string | null;
+  memory_type: string | null;
+  content_hash: string | null;
+  aptos_tx_hash: string | null;
+  created_at: string;
+  similarity: number;
 }
