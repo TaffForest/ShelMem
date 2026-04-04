@@ -1,5 +1,9 @@
 # shelmem
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
+[![TypeScript](https://img.shields.io/badge/lang-TypeScript-3178c6)](https://www.typescriptlang.org/)
+[![Shelby Testnet](https://img.shields.io/badge/Shelby-Testnet_Live-8BC53F)](https://shelby.xyz)
+
 Decentralised AI agent memory SDK for TypeScript/JavaScript.
 
 Store agent memories on Shelby Protocol's decentralised hot storage with on-chain proof via Aptos.

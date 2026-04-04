@@ -1,5 +1,11 @@
 # ShelMem
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-SDK-3178c6)](sdk-ts/)
+[![Python](https://img.shields.io/badge/Python-SDK-3776ab)](sdk-py/)
+[![Shelby Testnet](https://img.shields.io/badge/Shelby-Testnet_Live-8BC53F)](https://shelby.xyz)
+[![Aptos](https://img.shields.io/badge/Aptos-On--chain_Proof-4FD1C5)](https://aptos.dev)
+
 Decentralised AI agent memory — powered by Shelby Protocol and Aptos.
 
 ShelMem gives your AI agents persistent, verifiable memory. Every memory is stored on Shelby's decentralised hot storage network and anchored on-chain via Aptos, providing cryptographic proof that a memory existed at a specific moment in time.
