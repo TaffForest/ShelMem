@@ -14,7 +14,7 @@ function formatDate(iso: string): string {
 }
 
 function explorerUrl(txHash: string): string {
-  return `https://explorer.aptoslabs.com/txn/${txHash}?network=testnet`;
+  return `https://explorer.shelby.xyz/testnet/txn/${txHash}`;
 }
 
 const typeColors: Record<string, string> = {
