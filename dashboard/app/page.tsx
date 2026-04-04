@@ -26,7 +26,7 @@ export default function Landing() {
             <Link href="/docs">Docs</Link>
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer">Shelby</a>
             <a href="https://forestinfra.com" target="_blank" rel="noopener noreferrer">Forest</a>
-            <Link href="/dashboard" className="nav-cta">Launch App</Link>
+            <Link href="/dashboard" className="nav-cta">Dashboard</Link>
           </div>
           <button className="nav-burger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
             <span className={`burger-line ${menuOpen ? 'open' : ''}`} />
@@ -41,7 +41,7 @@ export default function Landing() {
             <Link href="/docs" onClick={closeMenu}>Docs</Link>
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>Shelby</a>
             <a href="https://forestinfra.com" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>Forest</a>
-            <Link href="/dashboard" className="nav-mobile-cta" onClick={closeMenu}>Launch App</Link>
+            <Link href="/dashboard" className="nav-mobile-cta" onClick={closeMenu}>Dashboard</Link>
           </div>
         )}
       </nav>
@@ -50,20 +50,24 @@ export default function Landing() {
       <section className="hero">
         <div className="hero-glow" />
         <h1>
-          Give your AI agents<br /><em>decentralised</em> memory
+          Tamper-proof memory<br />for <em>autonomous</em> agents
         </h1>
         <p className="hero-sub">
-          Write, recall, and verify agent memories on-chain.<br />
-          Powered by Shelby Protocol and anchored on Aptos.
+          Every memory is SHA-256 hashed, stored on Shelby Protocol,<br />
+          and anchored on Aptos. If it&apos;s been tampered with, you&apos;ll know.
         </p>
+        <div className="hero-install">
+          <code className="install-cmd">npm install shelmem</code>
+          <code className="install-cmd install-cmd-alt">pip install shelmem</code>
+        </div>
         <div className="hero-actions">
-          <Link href="/dashboard" className="btn-primary">Launch Dashboard</Link>
-          <a href="#how-it-works" className="btn-secondary" onClick={(e) => { e.preventDefault(); scrollTo('how-it-works'); }}>Learn more</a>
+          <Link href="/docs" className="btn-primary">Get Started</Link>
+          <Link href="/dashboard" className="btn-secondary">View Dashboard</Link>
         </div>
         <div className="hero-badges">
-          <span className="badge">On-chain Proof</span>
           <span className="badge">Tamper-Proof</span>
-          <span className="badge">Decentralised Storage</span>
+          <span className="badge">On-chain Proof</span>
+          <span className="badge">Decentralised</span>
           <span className="badge">Testnet Live</span>
         </div>
       </section>
@@ -94,157 +98,96 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works — with code */}
       <section className="section" id="how-it-works">
-        <h2 className="section-title">How it works</h2>
-        <p className="section-sub">Two SDK calls. Cryptographic proof.</p>
-        <div className="steps">
-          <div className="step">
-            <div className="step-num">1</div>
-            <h3>Write a memory</h3>
-            <p>Your agent calls <code className="mono">write()</code> with context and content. It&apos;s stored on Shelby and anchored on Aptos.</p>
-          </div>
-          <div className="step">
-            <div className="step-num">2</div>
-            <h3>Recall later</h3>
-            <p>Call <code className="mono">recall()</code> to retrieve memories by agent ID and context. Ordered by time, always fresh.</p>
-          </div>
-          <div className="step">
-            <div className="step-num">3</div>
-            <h3>Verify on-chain</h3>
-            <p>Every memory has an Aptos transaction hash. Cryptographic proof that the memory existed at that moment.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="section" id="features">
-        <h2 className="section-title">Why ShelMem?</h2>
-        <p className="section-sub">Decentralised memory for autonomous agents.</p>
-        <div className="features-grid">
-          <div className="feature-card">
-            <h3>On-chain anchoring</h3>
-            <p>Every memory write is recorded on Aptos. Immutable, timestamped, verifiable.</p>
-          </div>
-          <div className="feature-card">
-            <h3>Decentralised storage</h3>
-            <p>Memory content lives on Shelby Protocol&apos;s distributed hot storage network. No single point of failure.</p>
-          </div>
-          <div className="feature-card">
-            <h3>TypeScript &amp; Python SDKs</h3>
-            <p>First-class SDKs for both ecosystems. Two lines to write, one line to recall.</p>
-          </div>
-          <div className="feature-card">
-            <h3>Context-aware recall</h3>
-            <p>Filter memories by agent ID and context. Your agents remember what matters.</p>
-          </div>
-          <div className="feature-card">
-            <h3>Dashboard included</h3>
-            <p>Connect your wallet, browse all memories, verify proofs, and manage agents from one UI.</p>
-          </div>
-          <div className="feature-card">
-            <h3>Tamper-proof verification</h3>
-            <p>Every memory is SHA-256 hashed on write. On recall, the hash is re-verified — tampered content is flagged instantly.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Integrations */}
-      <section className="partners" id="integrations">
-        <h3 className="partners-label">Works With Every Framework</h3>
-        <div className="partners-logos">
-          <div className="partner-item">
-            <div className="partner-mark" style={{ height: 45 }}>
-              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>🦜 LangChain</span>
-            </div>
-            <span>BaseChatMessageHistory adapter</span>
-          </div>
-          <div className="partner-item">
-            <div className="partner-mark" style={{ height: 45 }}>
-              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>⚙️ CrewAI</span>
-            </div>
-            <span>Custom storage backend</span>
-          </div>
-          <div className="partner-item">
-            <div className="partner-mark" style={{ height: 45 }}>
-              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>▲ Vercel AI</span>
-            </div>
-            <span>memorize &amp; remember tools</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Agent Stack */}
-      <section className="section" id="agent-stack">
-        <h2 className="section-title">Agents need more than a wallet</h2>
-        <p className="section-sub">
-          Coinbase gives agents money. ShelMem gives agents memory.<br />
-          Together, agents that can pay <em style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-accent)' }}>and</em> remember.
-        </p>
-
-        <div className="compare-grid" style={{ maxWidth: 900, margin: '0 auto 48px' }}>
-          <div className="stack-card">
-            <div className="stack-header">
-              <span className="stack-icon">💰</span>
-              Financial Layer
-            </div>
-            <div className="stack-provider">Coinbase AgentKit</div>
-            <ul className="stack-list">
-              <li>Agentic Wallets</li>
-              <li>x402 payments</li>
-              <li>Trade, send, earn skills</li>
-              <li>Transaction proof on Base</li>
-            </ul>
-          </div>
-          <div className="stack-card stack-card-highlight">
-            <div className="stack-header">
-              <span className="stack-icon">🧠</span>
-              Memory Layer
-            </div>
-            <div className="stack-provider">ShelMem</div>
-            <ul className="stack-list">
-              <li>Persistent agent memory</li>
-              <li>Decentralised on Shelby</li>
-              <li>Context-aware recall</li>
-              <li>Cryptographic proof on Aptos</li>
-            </ul>
-          </div>
-        </div>
+        <h2 className="section-title">Two calls. Verified memory.</h2>
+        <p className="section-sub">Write memories with proof. Recall with tamper detection.</p>
 
         <div className="code-showcase">
           <div className="code-showcase-header">
             <span className="code-dot" style={{ background: '#ff5f57' }} />
             <span className="code-dot" style={{ background: '#febc2e' }} />
             <span className="code-dot" style={{ background: '#28c840' }} />
-            <span className="code-title">AgentKit + ShelMem</span>
+            <span className="code-title">shelmem</span>
           </div>
-          <pre className="code-showcase-body">{`// Agent remembers past decisions before trading
-const history = await memory.recall('trading-agent', 'market-analysis');
+          <pre className="code-showcase-body">{`import { ShelMem } from 'shelmem';
 
-// Agent executes a trade via Coinbase AgentKit
-const tx = await wallet.trade({ from: 'USDC', to: 'ETH', amount: '100' });
+const mem = new ShelMem({ supabaseUrl, supabaseKey });
 
-// Agent writes the decision + reasoning to decentralised memory
-await memory.write(
+// Write — hashed, stored on Shelby, anchored on Aptos
+const result = await mem.write(
   'trading-agent',
-  \`Bought ETH at $2,847. RSI was 28. Tx: \${tx.hash}\`,
-  'market-analysis'
+  'Bought ETH at $2,847. RSI was 28.',
+  'market-analysis',
+  'decision'
 );
-// → anchored on Aptos with cryptographic proof`}</pre>
-        </div>
+// → { content_hash, shelby_object_id, aptos_tx_hash }
 
-        <div className="use-cases">
-          <div className="use-case">
-            <h4>Trading with context</h4>
-            <p>Agents remember past market conditions and user risk preferences across sessions.</p>
+// Recall — each memory is verified against its hash
+const memories = await mem.recall('trading-agent', 'market-analysis');
+// → [{ memory, verified: true, memory_type: 'decision', ... }]`}</pre>
+        </div>
+      </section>
+
+      {/* Features — 6 cards, no redundancy */}
+      <section className="section" id="features">
+        <h2 className="section-title">Why ShelMem?</h2>
+        <p className="section-sub">The memory layer that proves memories are real.</p>
+        <div className="features-grid">
+          <div className="feature-card">
+            <h3>Tamper-proof verification</h3>
+            <p>SHA-256 content hash on every write. On recall, the hash is re-verified. Tampered memories are flagged instantly.</p>
           </div>
-          <div className="use-case">
-            <h4>Verifiable audit trails</h4>
-            <p>Cryptographic proof of what an agent knew when it spent money — crucial for compliance.</p>
+          <div className="feature-card">
+            <h3>On-chain anchoring</h3>
+            <p>Every memory is anchored on Aptos with a transaction hash. Cryptographic proof it existed at that moment.</p>
           </div>
-          <div className="use-case">
-            <h4>Multi-agent swarms</h4>
-            <p>Trading, monitoring, and reporting agents share memory via the same context namespace.</p>
+          <div className="feature-card">
+            <h3>Decentralised storage</h3>
+            <p>Content lives on Shelby Protocol&apos;s distributed hot storage. No single point of failure, no central database to compromise.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Typed memory schemas</h3>
+            <p>Categorise memories as facts, decisions, preferences, or observations. Filter on recall by type.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Framework adapters</h3>
+            <p>Drop-in integrations for LangChain, CrewAI, and Vercel AI SDK. Works with your existing stack.</p>
+          </div>
+          <div className="feature-card">
+            <h3>TypeScript &amp; Python</h3>
+            <p>First-class SDKs for both ecosystems. Same API, same verification, same guarantees.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Frameworks */}
+      <section className="partners" id="integrations">
+        <h3 className="partners-label">Works With</h3>
+        <div className="partners-logos">
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>🦜 LangChain</span>
+            </div>
+            <span>Chat message history</span>
+          </div>
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>⚙️ CrewAI</span>
+            </div>
+            <span>Shared crew memory</span>
+          </div>
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>▲ Vercel AI</span>
+            </div>
+            <span>Agent tools</span>
+          </div>
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>💰 AgentKit</span>
+            </div>
+            <span>Coinbase wallets</span>
           </div>
         </div>
       </section>
@@ -252,8 +195,11 @@ await memory.write(
       {/* CTA */}
       <section className="cta-section">
         <h2>Ready to give your agents memory?</h2>
-        <p>Install the SDK and write your first memory in under a minute.</p>
-        <Link href="/dashboard" className="btn-primary btn-lg">Launch Dashboard</Link>
+        <p>Install the SDK, write your first memory, and verify it — in under a minute.</p>
+        <div className="hero-actions" style={{ marginBottom: 0 }}>
+          <Link href="/docs" className="btn-primary btn-lg">Read the Docs</Link>
+          <a href="https://github.com/TaffForest/ShelMem" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-lg">GitHub</a>
+        </div>
       </section>
 
       {/* Footer */}
@@ -263,10 +209,9 @@ await memory.write(
             <span>Shel<span className="accent">Mem</span></span>
           </div>
           <div className="footer-links">
-            <a href="#features">Features</a>
-            <a href="#how-it-works">How it works</a>
             <Link href="/docs">Docs</Link>
             <Link href="/dashboard">Dashboard</Link>
+            <a href="https://github.com/TaffForest/ShelMem" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
           <div className="footer-links">
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer">Shelby</a>
