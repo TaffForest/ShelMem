@@ -21,6 +21,7 @@ export default function MemoryTable({ walletAddress }: { walletAddress: string |
         const { data, error } = await supabase
           .from('memories')
           .select('*')
+          .like('shelby_object_id', `shelby://${walletAddress}%`)
           .order('created_at', { ascending: false });
 
         if (error) {

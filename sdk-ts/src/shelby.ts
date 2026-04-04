@@ -131,7 +131,7 @@ export class ShelbyStorage {
     return { shelbyAddress, shelbyProof: shelbyAddress, contentHash };
   }
 
-  async download(shelbyAddress: string): Promise<Uint8Array> {
+  async download(shelbyAddress: string, retries = 1): Promise<Uint8Array> {
     if (this.mock) {
       throw new Error('Download not available in mock mode');
     }
@@ -139,6 +139,23 @@ export class ShelbyStorage {
     const client = this.getClient();
     const { accountAddress, blobName } = parseShelbyAddress(shelbyAddress);
 
+    let result = await this.downloadOnce(client, accountAddress, blobName);
+
+    // Retry once after delay if empty (Shelby propagation delay)
+    if (result.length === 0 && retries > 0) {
+      await new Promise(r => setTimeout(r, 2000));
+      result = await this.downloadOnce(client, accountAddress, blobName);
+    }
+
+    // Decrypt if enabled
+    if (this.encrypt) {
+      return decryptData(result, this.getEncryptionKey());
+    }
+
+    return result;
+  }
+
+  private async downloadOnce(client: ShelbyNodeClient, accountAddress: string, blobName: string): Promise<Uint8Array> {
     const blob = await client.download({ account: accountAddress, blobName });
 
     const reader = blob.readable.getReader();
@@ -150,18 +167,12 @@ export class ShelbyStorage {
     }
 
     const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-    let result = new Uint8Array(totalLength);
+    const result = new Uint8Array(totalLength);
     let offset = 0;
     for (const chunk of chunks) {
       result.set(chunk, offset);
       offset += chunk.length;
     }
-
-    // Decrypt if enabled
-    if (this.encrypt) {
-      return decryptData(result, this.getEncryptionKey());
-    }
-
     return result;
   }
 }

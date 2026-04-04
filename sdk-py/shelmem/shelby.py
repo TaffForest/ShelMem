@@ -131,12 +131,26 @@ class ShelbyStorage:
                 content_hash=content_hash,
             )
 
-    async def download(self, shelby_address: str) -> bytes:
+    async def download(self, shelby_address: str, retries: int = 1) -> bytes:
         if self.mock:
             raise RuntimeError("Download not available in mock mode")
 
         account_address, blob_name = _parse_shelby_address(shelby_address)
+        result = await self._download_once(account_address, blob_name)
 
+        # Retry once after delay if empty (Shelby propagation delay)
+        if len(result) == 0 and retries > 0:
+            import asyncio
+            await asyncio.sleep(2)
+            result = await self._download_once(account_address, blob_name)
+
+        # Decrypt if enabled
+        if self.encrypt:
+            result = _decrypt_data(result, self._get_encryption_key())
+
+        return result
+
+    async def _download_once(self, account_address: str, blob_name: str) -> bytes:
         async with httpx.AsyncClient() as client:
             headers = {}
             if self.api_key:
@@ -148,13 +162,7 @@ class ShelbyStorage:
                 timeout=60.0,
             )
             response.raise_for_status()
-            result = response.content
-
-        # Decrypt if enabled
-        if self.encrypt:
-            result = _decrypt_data(result, self._get_encryption_key())
-
-        return result
+            return response.content
 
 
 def _parse_shelby_address(address: str) -> tuple[str, str]:
