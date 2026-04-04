@@ -9,5 +9,8 @@
     "dev:dashboard": "npm run dev --workspace=dashboard",
     "build": "npm run build --workspace=sdk-ts && npm run build --workspace=dashboard",
     "build:sdk": "npm run build --workspace=sdk-ts"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.0"
   }
 }
