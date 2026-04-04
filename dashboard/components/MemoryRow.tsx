@@ -14,7 +14,11 @@ function formatDate(iso: string): string {
 }
 
 function explorerUrl(txHash: string): string {
-  return `https://explorer.shelby.xyz/testnet/txn/${txHash}`;
+  // Shelby addresses link to Shelby explorer, Aptos tx hashes link to Aptos explorer
+  if (txHash.startsWith('shelby://')) {
+    return `https://explorer.shelby.xyz`;
+  }
+  return `https://explorer.shelby.xyz`;
 }
 
 const typeColors: Record<string, string> = {
