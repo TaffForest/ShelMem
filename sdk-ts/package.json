@@ -1,5 +1,5 @@
 {
-  "name": "shelmem",
+  "name": "@forestinfra/shelmem",
   "version": "0.1.0",
   "description": "Decentralised AI agent memory SDK — powered by Shelby Protocol and Aptos",
   "type": "module",

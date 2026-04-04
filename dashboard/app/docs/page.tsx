@@ -39,7 +39,7 @@ export default function DocsPage() {
             1. Install
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-            <Pre label="TypeScript">{`npm install shelmem`}</Pre>
+            <Pre label="TypeScript">{`npm install @forestinfra/shelmem`}</Pre>
             <Pre label="Python">{`pip install shelmem`}</Pre>
           </div>
 
@@ -47,7 +47,7 @@ export default function DocsPage() {
             2. Initialise
           </h3>
           <Tabs
-            ts={`import { ShelMem } from 'shelmem';
+            ts={`import { ShelMem } from '@forestinfra/shelmem';
 
 const mem = new ShelMem({
   supabaseUrl: process.env.SUPABASE_URL,
@@ -276,7 +276,7 @@ crew = Crew(
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, marginTop: 24, color: 'var(--color-accent)' }}>
             Vercel AI SDK
           </h3>
-          <Pre label="TypeScript">{`import { createShelMemTools } from 'shelmem';
+          <Pre label="TypeScript">{`import { createShelMemTools } from '@forestinfra/shelmem';
 import { generateText } from 'ai';
 
 const tools = createShelMemTools({

@@ -36,7 +36,7 @@ Agent  →  ShelMem SDK  →  Shelby Protocol (content bytes)
 
 ```bash
 # TypeScript
-npm install shelmem
+npm install @forestinfra/shelmem
 
 # Python
 pip install shelmem
@@ -45,7 +45,7 @@ pip install shelmem
 ### 2. Write a memory
 
 ```typescript
-import { ShelMem } from 'shelmem';
+import { ShelMem } from '@forestinfra/shelmem';
 
 const mem = new ShelMem({
   supabaseUrl: process.env.SUPABASE_URL,

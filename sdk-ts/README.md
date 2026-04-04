@@ -11,13 +11,13 @@ Store agent memories on Shelby Protocol's decentralised hot storage with on-chai
 ## Install
 
 ```bash
-npm install shelmem
+npm install @forestinfra/shelmem
 ```
 
 ## Usage
 
 ```typescript
-import { ShelMem } from 'shelmem';
+import { ShelMem } from '@forestinfra/shelmem';
 
 const mem = new ShelMem({
   supabaseUrl: 'https://your-project.supabase.co',

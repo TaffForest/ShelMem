@@ -57,7 +57,7 @@ export default function Landing() {
           and anchored on Aptos. If it&apos;s been tampered with, you&apos;ll know.
         </p>
         <div className="hero-install">
-          <code className="install-cmd">npm install shelmem</code>
+          <code className="install-cmd">npm install @forestinfra/shelmem</code>
           <code className="install-cmd install-cmd-alt">pip install shelmem</code>
         </div>
         <div className="hero-actions">
@@ -110,7 +110,7 @@ export default function Landing() {
             <span className="code-dot" style={{ background: '#28c840' }} />
             <span className="code-title">shelmem</span>
           </div>
-          <pre className="code-showcase-body">{`import { ShelMem } from 'shelmem';
+          <pre className="code-showcase-body">{`import { ShelMem } from '@forestinfra/shelmem';
 
 const mem = new ShelMem({ supabaseUrl, supabaseKey });
 
