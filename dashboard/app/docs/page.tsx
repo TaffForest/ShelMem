@@ -223,6 +223,75 @@ SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_role_key`}</Pre>
         </section>
 
+        {/* Integrations */}
+        <section style={{ marginBottom: 56 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Framework Integrations</h2>
+
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--color-accent)' }}>
+            LangChain
+          </h3>
+          <Tabs
+            ts={`// Not available in TypeScript — use the Python adapter
+// or use the ShelMem SDK directly`}
+            py={`from shelmem.integrations.langchain import ShelMemChatMessageHistory
+
+history = ShelMemChatMessageHistory(
+    session_id="user-123",
+    agent_id="my-chatbot",
+    supabase_url="https://your-project.supabase.co",
+    supabase_key="your-key",
+)
+
+# Works with any LangChain chain
+from langchain_core.runnables.history import RunnableWithMessageHistory
+chain_with_history = RunnableWithMessageHistory(
+    chain,
+    lambda session_id: ShelMemChatMessageHistory(
+        session_id=session_id,
+        agent_id="my-chatbot",
+        supabase_url=url, supabase_key=key,
+    ),
+)`}
+          />
+
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, marginTop: 24, color: 'var(--color-accent)' }}>
+            CrewAI
+          </h3>
+          <Pre label="Python">{`from shelmem.integrations.crewai import ShelMemStorage
+from crewai.memory.short_term.short_term_memory import ShortTermMemory
+
+storage = ShelMemStorage(
+    crew_id="my-crew",
+    supabase_url="https://your-project.supabase.co",
+    supabase_key="your-key",
+)
+
+crew = Crew(
+    agents=[...],
+    tasks=[...],
+    memory=True,
+    short_term_memory=ShortTermMemory(storage=storage),
+)`}</Pre>
+
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, marginTop: 24, color: 'var(--color-accent)' }}>
+            Vercel AI SDK
+          </h3>
+          <Pre label="TypeScript">{`import { createShelMemTools } from 'shelmem';
+import { generateText } from 'ai';
+
+const tools = createShelMemTools({
+  agentId: 'my-agent',
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseKey: process.env.SUPABASE_KEY,
+});
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  tools,
+  prompt: 'Remember that I prefer dark mode',
+});`}</Pre>
+        </section>
+
         {/* Database */}
         <section style={{ marginBottom: 56 }}>
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Database Setup</h2>

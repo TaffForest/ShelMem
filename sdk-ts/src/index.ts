@@ -4,6 +4,8 @@ import type { ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult
 
 export type { ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult } from './types.js';
 export { computeHash } from './shelby.js';
+export { createShelMemTools } from './integrations/vercel-ai.js';
+export type { ShelMemToolsConfig } from './integrations/vercel-ai.js';
 
 export class ShelMem {
   private storage: ShelbyStorage;

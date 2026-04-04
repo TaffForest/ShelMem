@@ -149,6 +149,31 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Integrations */}
+      <section className="partners" id="integrations">
+        <h3 className="partners-label">Works With Every Framework</h3>
+        <div className="partners-logos">
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>🦜 LangChain</span>
+            </div>
+            <span>BaseChatMessageHistory adapter</span>
+          </div>
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>⚙️ CrewAI</span>
+            </div>
+            <span>Custom storage backend</span>
+          </div>
+          <div className="partner-item">
+            <div className="partner-mark" style={{ height: 45 }}>
+              <span style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.03em' }}>▲ Vercel AI</span>
+            </div>
+            <span>memorize &amp; remember tools</span>
+          </div>
+        </div>
+      </section>
+
       {/* Agent Stack */}
       <section className="section" id="agent-stack">
         <h2 className="section-title">Agents need more than a wallet</h2>
