@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, createHmac, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { ShelbyNodeClient } from '@shelby-protocol/sdk/node';
 import { Network, Ed25519Account, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
 
@@ -14,10 +14,39 @@ export function computeHash(data: Uint8Array): string {
   return createHash('sha256').update(data).digest('hex');
 }
 
+// --- AES-256-GCM encryption ---
+
+function deriveEncryptionKey(privateKey: string): Buffer {
+  return createHmac('sha256', 'ShelMem-v1').update(privateKey).digest();
+}
+
+function encryptData(plaintext: Uint8Array, key: Buffer): Uint8Array {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  // Format: [IV 12B] [AuthTag 16B] [Ciphertext]
+  return new Uint8Array(Buffer.concat([iv, authTag, ciphertext]));
+}
+
+function decryptData(encrypted: Uint8Array, key: Buffer): Uint8Array {
+  const buf = Buffer.from(encrypted);
+  const iv = buf.subarray(0, 12);
+  const authTag = buf.subarray(12, 28);
+  const ciphertext = buf.subarray(28);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  return new Uint8Array(Buffer.concat([decipher.update(ciphertext), decipher.final()]));
+}
+
+// --- Storage class ---
+
 export class ShelbyStorage {
   private client: ShelbyNodeClient | null = null;
   private account: Ed25519Account | null = null;
+  private encryptionKey: Buffer | null = null;
   private readonly mock: boolean;
+  private readonly encrypt: boolean;
   private readonly apiKey?: string;
   private readonly privateKey?: string;
   private readonly network: 'testnet' | 'shelbynet';
@@ -27,8 +56,10 @@ export class ShelbyStorage {
     privateKey?: string;
     network?: 'testnet' | 'shelbynet';
     mock?: boolean;
+    encrypt?: boolean;
   }) {
     this.mock = opts.mock ?? (process.env.SHELBY_MOCK !== 'false');
+    this.encrypt = opts.encrypt ?? false;
     this.apiKey = opts.apiKey ?? process.env.SHELBY_API_KEY;
     this.privateKey = opts.privateKey ?? process.env.SHELBY_ACCOUNT_PRIVATE_KEY;
     this.network = opts.network ?? (process.env.SHELBY_NETWORK as 'testnet' | 'shelbynet') ?? 'shelbynet';
@@ -57,9 +88,21 @@ export class ShelbyStorage {
     return this.account;
   }
 
+  private getEncryptionKey(): Buffer {
+    if (!this.encryptionKey) {
+      if (!this.privateKey) {
+        throw new Error('aptosPrivateKey is required for encryption');
+      }
+      this.encryptionKey = deriveEncryptionKey(this.privateKey);
+    }
+    return this.encryptionKey;
+  }
+
   async upload(data: Uint8Array, blobName: string): Promise<ShelbyUploadResult> {
+    // Hash plaintext BEFORE encryption
+    const contentHash = computeHash(data);
+
     if (this.mock) {
-      const contentHash = computeHash(data);
       const shelbyAddress = `shelby://${contentHash}`;
       const proofHash = createHash('sha256')
         .update(shelbyAddress + Date.now())
@@ -67,15 +110,19 @@ export class ShelbyStorage {
       return { shelbyAddress, shelbyProof: `0x${proofHash}`, contentHash };
     }
 
-    const contentHash = computeHash(data);
+    // Encrypt if enabled
+    let uploadData = data;
+    if (this.encrypt) {
+      uploadData = encryptData(data, this.getEncryptionKey());
+    }
+
     const client = this.getClient();
     const account = this.getAccount();
-
     const expirationMicros = (Date.now() + THIRTY_DAYS_MS) * 1000;
 
     await client.upload({
       signer: account,
-      blobData: data,
+      blobData: uploadData,
       blobName,
       expirationMicros,
     });
@@ -102,14 +149,19 @@ export class ShelbyStorage {
       chunks.push(value);
     }
 
-    // Concatenate chunks
     const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-    const result = new Uint8Array(totalLength);
+    let result = new Uint8Array(totalLength);
     let offset = 0;
     for (const chunk of chunks) {
       result.set(chunk, offset);
       offset += chunk.length;
     }
+
+    // Decrypt if enabled
+    if (this.encrypt) {
+      return decryptData(result, this.getEncryptionKey());
+    }
+
     return result;
   }
 }

@@ -27,6 +27,7 @@ class ShelMem:
         aptos_private_key: str | None = None,
         network: str = "testnet",
         mock: bool | None = None,
+        encrypt: bool = False,
         embedding_provider: EmbeddingProvider | None = None,
     ):
         self._storage = ShelbyStorage(
@@ -34,6 +35,7 @@ class ShelMem:
             private_key=aptos_private_key,
             network=network,
             mock=mock,
+            encrypt=encrypt,
         )
         self._metadata = MemoryMetadata(supabase_url, supabase_key)
         self._embed = embedding_provider

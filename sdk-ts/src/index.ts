@@ -20,6 +20,7 @@ export class ShelMem {
       privateKey: config.aptosPrivateKey,
       network: config.network,
       mock: config.mock,
+      encrypt: config.encrypt,
     });
 
     this.metadata = new MemoryMetadata(config.supabaseUrl, config.supabaseKey);

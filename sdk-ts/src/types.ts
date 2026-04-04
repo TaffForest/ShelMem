@@ -7,6 +7,7 @@ export interface ShelMemConfig {
   supabaseKey: string;
   network?: 'testnet' | 'shelbynet';
   mock?: boolean;
+  encrypt?: boolean;
   embeddingProvider?: (text: string) => Promise<number[]>;
 }
 
