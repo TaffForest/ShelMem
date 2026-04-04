@@ -1,4 +1,4 @@
 from .client import ShelMem
-from .types import WriteResult, MemoryRecord
+from .types import WriteResult, MemoryRecord, VerifyResult, MemoryType
 
-__all__ = ["ShelMem", "WriteResult", "MemoryRecord"]
+__all__ = ["ShelMem", "WriteResult", "MemoryRecord", "VerifyResult", "MemoryType"]

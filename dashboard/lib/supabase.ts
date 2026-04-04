@@ -28,6 +28,9 @@ export interface MemoryRow {
   memory_preview: string | null;
   shelby_object_id: string;
   aptos_tx_hash: string | null;
+  content_hash: string | null;
+  memory_type: string | null;
+  verified: boolean | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

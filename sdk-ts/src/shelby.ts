@@ -7,6 +7,11 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 export interface ShelbyUploadResult {
   shelbyAddress: string;
   shelbyProof: string;
+  contentHash: string;
+}
+
+export function computeHash(data: Uint8Array): string {
+  return createHash('sha256').update(data).digest('hex');
 }
 
 export class ShelbyStorage {
@@ -54,14 +59,15 @@ export class ShelbyStorage {
 
   async upload(data: Uint8Array, blobName: string): Promise<ShelbyUploadResult> {
     if (this.mock) {
-      const hash = createHash('sha256').update(data).digest('hex');
-      const shelbyAddress = `shelby://${hash}`;
+      const contentHash = computeHash(data);
+      const shelbyAddress = `shelby://${contentHash}`;
       const proofHash = createHash('sha256')
         .update(shelbyAddress + Date.now())
         .digest('hex');
-      return { shelbyAddress, shelbyProof: `0x${proofHash}` };
+      return { shelbyAddress, shelbyProof: `0x${proofHash}`, contentHash };
     }
 
+    const contentHash = computeHash(data);
     const client = this.getClient();
     const account = this.getAccount();
 
@@ -75,7 +81,7 @@ export class ShelbyStorage {
     });
 
     const shelbyAddress = `shelby://${account.accountAddress.toString()}/${blobName}`;
-    return { shelbyAddress, shelbyProof: shelbyAddress };
+    return { shelbyAddress, shelbyProof: shelbyAddress, contentHash };
   }
 
   async download(shelbyAddress: string): Promise<Uint8Array> {

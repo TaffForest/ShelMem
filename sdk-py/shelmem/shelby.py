@@ -20,6 +20,11 @@ import httpx
 class ShelbyUploadResult:
     shelby_address: str
     shelby_proof: str
+    content_hash: str
+
+
+def compute_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 class ShelbyStorage:
@@ -47,7 +52,7 @@ class ShelbyStorage:
 
     async def upload(self, data: bytes, blob_name: str) -> ShelbyUploadResult:
         if self.mock:
-            content_hash = hashlib.sha256(data).hexdigest()
+            content_hash = compute_hash(data)
             shelby_address = f"shelby://{content_hash}"
             proof_hash = hashlib.sha256(
                 (shelby_address + str(int(time.time() * 1000))).encode()
@@ -55,6 +60,7 @@ class ShelbyStorage:
             return ShelbyUploadResult(
                 shelby_address=shelby_address,
                 shelby_proof=f"0x{proof_hash}",
+                content_hash=content_hash,
             )
 
         if not self.private_key:
@@ -74,6 +80,7 @@ class ShelbyStorage:
             )
             response.raise_for_status()
 
+            content_hash = compute_hash(data)
             result = response.json()
             shelby_address = result.get("address", f"shelby://{result.get('account')}/{blob_name}")
             shelby_proof = result.get("proof", shelby_address)
@@ -81,6 +88,7 @@ class ShelbyStorage:
             return ShelbyUploadResult(
                 shelby_address=shelby_address,
                 shelby_proof=shelby_proof,
+                content_hash=content_hash,
             )
 
     async def download(self, shelby_address: str) -> bytes:

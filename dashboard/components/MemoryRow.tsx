@@ -17,6 +17,45 @@ function explorerUrl(txHash: string): string {
   return `https://explorer.aptoslabs.com/txn/${txHash}?network=testnet`;
 }
 
+const typeColors: Record<string, string> = {
+  fact: '#60a5fa',
+  decision: '#f59e0b',
+  preference: '#a78bfa',
+  observation: '#8BC53F',
+};
+
+function TypePill({ type }: { type: string | null }) {
+  const t = type || 'observation';
+  const color = typeColors[t] || 'var(--color-text-muted)';
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '2px 8px',
+        fontSize: 11,
+        fontWeight: 600,
+        borderRadius: 100,
+        border: `1px solid ${color}`,
+        color,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+      }}
+    >
+      {t}
+    </span>
+  );
+}
+
+function VerifiedBadge({ verified }: { verified: boolean | null }) {
+  if (verified === true) {
+    return <span title="Verified — content hash matches" style={{ color: '#4ade80', fontSize: 16 }}>&#10003;</span>;
+  }
+  if (verified === false) {
+    return <span title="TAMPERED — content hash mismatch" style={{ color: '#f87171', fontSize: 16, fontWeight: 700 }}>&#10007;</span>;
+  }
+  return <span title="Unverified" style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>—</span>;
+}
+
 export default function MemoryRow({
   row,
   onDelete,
@@ -49,8 +88,9 @@ export default function MemoryRow({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
         <td style={{ ...cellStyle, color: 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>{row.agent_id}</td>
+        <td style={cellStyle}><TypePill type={row.memory_type} /></td>
         <td style={cellStyle}>{row.context}</td>
-        <td style={{ ...cellStyle, color: 'var(--color-text-muted)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+        <td style={{ ...cellStyle, color: 'var(--color-text-muted)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
           {row.memory_preview || '—'}
         </td>
         <td style={{ ...cellStyle, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' as const, fontFamily: 'var(--font-mono)', fontSize: 13 }}>
@@ -82,7 +122,6 @@ export default function MemoryRow({
               fontSize: 13,
               cursor: deleting ? 'wait' : 'pointer',
               opacity: deleting ? 0.5 : 0.7,
-              transition: 'opacity 0.15s',
             }}
           >
             {deleting ? '...' : 'Delete'}
@@ -91,16 +130,26 @@ export default function MemoryRow({
       </tr>
       {expanded && (
         <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <td colSpan={6} style={{ padding: '16px', background: 'var(--color-bg-card)' }}>
+          <td colSpan={7} style={{ padding: '16px', background: 'var(--color-bg-card)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <TypePill type={row.memory_type} />
+              <VerifiedBadge verified={row.verified} />
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {row.verified === true && 'Content integrity verified'}
+                {row.verified === false && 'WARNING: Content may have been tampered with'}
+                {row.verified === null && 'Not yet verified'}
+              </span>
+            </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
               Full Memory Content
             </div>
             <pre style={{ fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' as const, color: 'var(--color-text)', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
               {row.memory_preview || '[No content available]'}
             </pre>
-            <div style={{ marginTop: 12, display: 'flex', gap: 24, fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column' as const, gap: 4, fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
               <span>Shelby: {row.shelby_object_id}</span>
               {row.aptos_tx_hash && <span>Tx: {row.aptos_tx_hash}</span>}
+              {row.content_hash && <span>SHA-256: {row.content_hash}</span>}
             </div>
           </td>
         </tr>

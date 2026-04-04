@@ -90,6 +90,7 @@ export default function MemoryTable({ walletAddress }: { walletAddress: string |
         <thead>
           <tr>
             <th style={thStyle}>Agent</th>
+            <th style={thStyle}>Type</th>
             <th style={thStyle}>Context</th>
             <th style={thStyle}>Memory</th>
             <th style={thStyle}>Timestamp</th>

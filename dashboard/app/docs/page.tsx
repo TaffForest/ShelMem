@@ -70,19 +70,22 @@ mem = ShelMem(
             ts={`const result = await mem.write(
   'agent-001',
   'User prefers dark mode and concise responses',
-  'preferences'
+  'preferences',
+  'preference' // fact | decision | preference | observation
 );
 
+console.log(result.content_hash);     // sha256 hash
 console.log(result.shelby_object_id); // shelby://...
 console.log(result.aptos_tx_hash);    // 0x...`}
             py={`result = await mem.write(
     agent_id="agent-001",
     memory="User prefers dark mode and concise responses",
     context="preferences",
+    memory_type="preference",
 )
 
-print(result.shelby_object_id)  # shelby://...
-print(result.aptos_tx_hash)     # 0x...`}
+print(result.content_hash)      # sha256 hash
+print(result.shelby_object_id)  # shelby://...`}
           />
 
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, marginTop: 24, color: 'var(--color-accent)' }}>
@@ -92,12 +95,14 @@ print(result.aptos_tx_hash)     # 0x...`}
             ts={`const memories = await mem.recall('agent-001', 'preferences');
 
 for (const m of memories) {
-  console.log(m.memory, m.timestamp);
+  console.log(m.memory, m.memory_type);
+  console.log('Verified:', m.verified); // true | false | null
 }`}
             py={`memories = await mem.recall("agent-001", context="preferences")
 
 for m in memories:
-    print(m.memory, m.timestamp)`}
+    print(m.memory, m.memory_type)
+    print("Verified:", m.verified)  # True | False | None`}
           />
         </section>
 
@@ -107,35 +112,56 @@ for m in memories:
 
           <ApiMethod
             name="write"
-            signature="write(agent_id, memory, context, metadata?)"
-            description="Store a memory on Shelby with on-chain Aptos proof."
+            signature="write(agent_id, memory, context, memory_type?, metadata?)"
+            description="Store a memory on Shelby with on-chain Aptos proof. Content is SHA-256 hashed for tamper detection."
             params={[
               ['agent_id', 'string', 'Unique identifier for the agent'],
               ['memory', 'string', 'The memory content to store'],
               ['context', 'string', 'Category/context label for filtering'],
+              ['memory_type', 'MemoryType (optional)', "'fact' | 'decision' | 'preference' | 'observation' (default)"],
               ['metadata', 'object (optional)', 'Arbitrary key-value metadata'],
             ]}
             returns={[
               ['shelby_object_id', 'string', 'Shelby storage address (shelby://...)'],
               ['aptos_tx_hash', 'string', 'On-chain transaction hash'],
+              ['content_hash', 'string', 'SHA-256 hash of content for verification'],
+              ['memory_type', 'string', 'The memory type that was stored'],
               ['timestamp', 'string', 'ISO 8601 creation timestamp'],
             ]}
           />
 
           <ApiMethod
             name="recall"
-            signature="recall(agent_id, context?, limit?)"
-            description="Retrieve memories for an agent, ordered by most recent first."
+            signature="recall(agent_id, context?, limit?, memory_type?)"
+            description="Retrieve memories for an agent. Each memory is verified against its stored content hash — tampered content is flagged."
             params={[
               ['agent_id', 'string', 'Agent to query memories for'],
               ['context', 'string (optional)', 'Filter by context label'],
               ['limit', 'number (optional)', 'Max results, default 10'],
+              ['memory_type', 'MemoryType (optional)', 'Filter by memory type'],
             ]}
             returns={[
               ['memory', 'string', 'The memory content'],
               ['context', 'string', 'Context label'],
               ['timestamp', 'string', 'ISO 8601 creation timestamp'],
               ['aptos_tx_hash', 'string', 'On-chain proof hash'],
+              ['content_hash', 'string', 'SHA-256 content hash'],
+              ['memory_type', 'string', 'fact | decision | preference | observation'],
+              ['verified', 'boolean | null', 'true if hash matches, false if tampered, null if unverifiable'],
+            ]}
+          />
+
+          <ApiMethod
+            name="verify"
+            signature="verify(id)"
+            description="Re-download a memory from Shelby and verify its content hash. Use this to detect tampering."
+            params={[
+              ['id', 'string', 'UUID of the memory row'],
+            ]}
+            returns={[
+              ['verified', 'boolean', 'true if content hash matches'],
+              ['content_hash', 'string', 'Actual SHA-256 of downloaded content'],
+              ['expected_hash', 'string', 'Hash stored at write time'],
             ]}
           />
 

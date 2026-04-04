@@ -62,6 +62,7 @@ export default function Landing() {
         </div>
         <div className="hero-badges">
           <span className="badge">On-chain Proof</span>
+          <span className="badge">Tamper-Proof</span>
           <span className="badge">Decentralised Storage</span>
           <span className="badge">Testnet Live</span>
         </div>
@@ -142,8 +143,8 @@ export default function Landing() {
             <p>Connect your wallet, browse all memories, verify proofs, and manage agents from one UI.</p>
           </div>
           <div className="feature-card">
-            <h3>Testnet ready</h3>
-            <p>Free on Shelby testnet. Start building today, migrate to mainnet when ready.</p>
+            <h3>Tamper-proof verification</h3>
+            <p>Every memory is SHA-256 hashed on write. On recall, the hash is re-verified — tampered content is flagged instantly.</p>
           </div>
         </div>
       </section>
