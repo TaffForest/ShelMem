@@ -1,0 +1,11 @@
+.claude/
+node_modules/
+dist/
+.next/
+.env
+.env.local
+*.tsbuildinfo
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/

@@ -1,0 +1,13 @@
+{
+  "name": "shelmem-monorepo",
+  "private": true,
+  "workspaces": [
+    "sdk-ts",
+    "dashboard"
+  ],
+  "scripts": {
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "build": "npm run build --workspace=sdk-ts && npm run build --workspace=dashboard",
+    "build:sdk": "npm run build --workspace=sdk-ts"
+  }
+}
