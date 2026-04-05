@@ -26,3 +26,10 @@ a {
   --accent-10: #7AB035;
   --accent-11: #8BC53F;
 }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .docs-sidebar {
+    display: none !important;
+  }
+}

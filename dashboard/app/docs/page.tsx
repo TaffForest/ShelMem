@@ -35,8 +35,8 @@ export default function DocsPage() {
       </nav>
 
       <Flex style={{ maxWidth: 1200, margin: '0 auto' }}>
-        {/* Sidebar */}
-        <Box style={{ width: 220, minWidth: 220, padding: '32px 0 32px 32px', position: 'sticky', top: 60, height: 'fit-content', alignSelf: 'flex-start' }}>
+        {/* Sidebar — hidden on mobile */}
+        <Box className="docs-sidebar" style={{ width: 220, minWidth: 220, padding: '32px 0 32px 32px', position: 'sticky', top: 60, height: 'fit-content', alignSelf: 'flex-start' }}>
           <Text size="1" weight="medium" color="gray" style={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Documentation</Text>
           {sections.map(s => (
             <a key={s.id} href={`#${s.id}`} onClick={(e) => { e.preventDefault(); scrollTo(s.id); }}
