@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge, Text, Code, Table, Flex, Box } from '@radix-ui/themes';
 import type { MemoryRow as MemoryRowType } from '@/lib/supabase';
+import CopyButton from './CopyButton';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -81,10 +82,23 @@ export default function MemoryRow({
               <Code size="2" variant="ghost" style={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6, marginBottom: 12 }}>
                 {row.memory_preview || '[No content available]'}
               </Code>
-              <Flex direction="column" gap="1">
-                <Text size="1" color="gray"><Code size="1" variant="ghost">Shelby: {row.shelby_object_id}</Code></Text>
-                {row.aptos_tx_hash && <Text size="1" color="gray"><Code size="1" variant="ghost">Tx: {row.aptos_tx_hash}</Code></Text>}
-                {row.content_hash && <Text size="1" color="gray"><Code size="1" variant="ghost">SHA-256: {row.content_hash}</Code></Text>}
+              <Flex direction="column" gap="2">
+                <Flex align="center" gap="2">
+                  <Text size="1" color="gray"><Code size="1" variant="ghost">Shelby: {row.shelby_object_id}</Code></Text>
+                  <CopyButton text={row.shelby_object_id} />
+                </Flex>
+                {row.aptos_tx_hash && (
+                  <Flex align="center" gap="2">
+                    <Text size="1" color="gray"><Code size="1" variant="ghost">Tx: {row.aptos_tx_hash}</Code></Text>
+                    <CopyButton text={row.aptos_tx_hash} />
+                  </Flex>
+                )}
+                {row.content_hash && (
+                  <Flex align="center" gap="2">
+                    <Text size="1" color="gray"><Code size="1" variant="ghost">SHA-256: {row.content_hash}</Code></Text>
+                    <CopyButton text={row.content_hash} />
+                  </Flex>
+                )}
               </Flex>
             </Box>
           </Table.Cell>
