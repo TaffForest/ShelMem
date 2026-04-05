@@ -69,16 +69,19 @@ export default function Landing() {
       <section className="partners-section">
         <div className="partners-inner">
           <div className="partner-logo">
-            <img src="/shelby-logo.svg" alt="Shelby" style={{ filter: 'brightness(2)' }} />
+            <div className="partner-mark"><img src="/shelby-logo.svg" alt="Shelby" style={{ height: 44, filter: 'brightness(2)', objectFit: 'contain' }} /></div>
             <span className="partner-label">Hot Storage</span>
           </div>
           <div className="partner-logo">
-            <img src="/aptos-logo.png" alt="Aptos" style={{ filter: 'invert(1) brightness(1.5)' }} />
+            <div className="partner-mark"><img src="/aptos-logo.png" alt="Aptos" style={{ height: 44, filter: 'invert(1) brightness(1.5)', objectFit: 'contain' }} /></div>
             <span className="partner-label">Blockchain</span>
           </div>
-          <div className="partner-logo" style={{ flexDirection: 'row', gap: 6 }}>
-            <img src="/forest-icon.png" alt="Forest" style={{ height: 36 }} />
-            <span className="partner-logo-text">Forest</span>
+          <div className="partner-logo">
+            <div className="partner-mark" style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+              <img src="/forest-icon.png" alt="Forest" style={{ height: 44, objectFit: 'contain' }} />
+              <span style={{ fontSize: '3rem', fontWeight: 700, color: '#ffffff', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.06em' }}>Forest</span>
+            </div>
+            <span className="partner-label">Infrastructure</span>
           </div>
         </div>
       </section>
