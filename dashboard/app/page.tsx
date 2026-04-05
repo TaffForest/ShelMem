@@ -53,8 +53,8 @@ export default function Landing() {
           Tamper-proof memory<br />for <em>autonomous</em> agents
         </h1>
         <p className="hero-sub">
-          Every memory is SHA-256 hashed, stored on Shelby Protocol,<br />
-          and anchored on Aptos. If it&apos;s been tampered with, you&apos;ll know.
+          Encrypted, verifiable, decentralised. Every memory is hashed,<br />
+          stored on Shelby Protocol, and anchored on Aptos.
         </p>
         <div className="hero-install">
           <code className="install-cmd">npm install @forestinfra/shelmem</code>
@@ -66,8 +66,9 @@ export default function Landing() {
         </div>
         <div className="hero-badges">
           <span className="badge">Tamper-Proof</span>
+          <span className="badge">AES-256 Encrypted</span>
+          <span className="badge">Semantic Search</span>
           <span className="badge">On-chain Proof</span>
-          <span className="badge">Decentralised</span>
           <span className="badge">Testnet Live</span>
         </div>
       </section>
@@ -101,62 +102,72 @@ export default function Landing() {
       {/* How It Works — with code */}
       <section className="section" id="how-it-works">
         <h2 className="section-title">Two calls. Verified memory.</h2>
-        <p className="section-sub">Write memories with proof. Recall with tamper detection.</p>
+        <p className="section-sub">Write memories with proof. Recall with tamper detection. Search by meaning.</p>
 
         <div className="code-showcase">
           <div className="code-showcase-header">
             <span className="code-dot" style={{ background: '#ff5f57' }} />
             <span className="code-dot" style={{ background: '#febc2e' }} />
             <span className="code-dot" style={{ background: '#28c840' }} />
-            <span className="code-title">shelmem</span>
+            <span className="code-title">@forestinfra/shelmem</span>
           </div>
-          <pre className="code-showcase-body">{`import { ShelMem } from '@forestinfra/shelmem';
+          <pre className="code-showcase-body">{`import { ShelMem, openaiEmbeddings } from '@forestinfra/shelmem';
 
-const mem = new ShelMem({ supabaseUrl, supabaseKey });
+const mem = new ShelMem({
+  supabaseUrl, supabaseKey,
+  encrypt: true,  // AES-256-GCM encryption
+  embeddingProvider: openaiEmbeddings(OPENAI_KEY),  // semantic search
+});
 
-// Write — hashed, stored on Shelby, anchored on Aptos
-const result = await mem.write(
-  'trading-agent',
-  'Bought ETH at $2,847. RSI was 28.',
-  'market-analysis',
-  'decision'
-);
-// → { content_hash, shelby_object_id, aptos_tx_hash }
+// Write — encrypted, hashed, stored on Shelby, anchored on Aptos
+await mem.write('agent-01', 'Bought ETH at $2,847', 'analysis', 'decision');
 
-// Recall — each memory is verified against its hash
-const memories = await mem.recall('trading-agent', 'market-analysis');
-// → [{ memory, verified: true, memory_type: 'decision', ... }]`}</pre>
+// Recall — decrypted, hash verified, tamper-proof
+const memories = await mem.recall('agent-01');
+// → [{ memory, verified: true, memory_type: 'decision' }]
+
+// Semantic search — find by meaning, not keywords
+const results = await mem.search('what do I know about ETH?');
+// → [{ memory_preview, similarity: 0.89 }]`}</pre>
         </div>
       </section>
 
-      {/* Features — 6 cards, no redundancy */}
+      {/* Features — 8 cards */}
       <section className="section" id="features">
         <h2 className="section-title">Why ShelMem?</h2>
         <p className="section-sub">The memory layer that proves memories are real.</p>
         <div className="features-grid">
           <div className="feature-card">
             <h3>Tamper-proof verification</h3>
-            <p>SHA-256 content hash on every write. On recall, the hash is re-verified. Tampered memories are flagged instantly.</p>
+            <p>SHA-256 content hash on every write. On recall, content is re-downloaded and the hash verified. Tampered memories are flagged instantly.</p>
+          </div>
+          <div className="feature-card">
+            <h3>AES-256-GCM encryption</h3>
+            <p>Opt-in end-to-end encryption. Memories are encrypted before upload to Shelby. Key derived from your Aptos private key — zero additional secrets.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Semantic search</h3>
+            <p>pgvector embeddings stored alongside memories. Search by meaning with <code className="mono">search()</code> — not just exact keyword matching.</p>
           </div>
           <div className="feature-card">
             <h3>On-chain anchoring</h3>
-            <p>Every memory is anchored on Aptos with a transaction hash. Cryptographic proof it existed at that moment.</p>
-          </div>
-          <div className="feature-card">
-            <h3>Decentralised storage</h3>
-            <p>Content lives on Shelby Protocol&apos;s distributed hot storage. No single point of failure, no central database to compromise.</p>
+            <p>Every memory write submits an Aptos transaction. Cryptographic proof that the memory existed at that exact moment in time.</p>
           </div>
           <div className="feature-card">
             <h3>Typed memory schemas</h3>
-            <p>Categorise memories as facts, decisions, preferences, or observations. Filter on recall by type.</p>
+            <p>Categorise memories as facts, decisions, preferences, or observations. Filter on recall by type for structured agent reasoning.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Decentralised storage</h3>
+            <p>Content lives on Shelby Protocol&apos;s distributed hot storage network. No single point of failure, no central database to compromise.</p>
           </div>
           <div className="feature-card">
             <h3>Framework adapters</h3>
-            <p>Drop-in integrations for LangChain, CrewAI, and Vercel AI SDK. Works with your existing stack.</p>
+            <p>Drop-in integrations for LangChain, CrewAI, Vercel AI SDK, and Coinbase AgentKit. Works with your existing agent stack.</p>
           </div>
           <div className="feature-card">
             <h3>TypeScript &amp; Python</h3>
-            <p>First-class SDKs for both ecosystems. Same API, same verification, same guarantees.</p>
+            <p>Published on npm and PyPI. Same API, same verification, same encryption — both ecosystems, first-class support.</p>
           </div>
         </div>
       </section>
@@ -212,6 +223,8 @@ const memories = await mem.recall('trading-agent', 'market-analysis');
             <Link href="/docs">Docs</Link>
             <Link href="/dashboard">Dashboard</Link>
             <a href="https://github.com/TaffForest/ShelMem" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://pypi.org/project/shelmem/" target="_blank" rel="noopener noreferrer">PyPI</a>
+            <a href="https://www.npmjs.com/package/@forestinfra/shelmem" target="_blank" rel="noopener noreferrer">npm</a>
           </div>
           <div className="footer-links">
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer">Shelby</a>
