@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Coinbase AgentKit - blue circle with C -->
+  <defs>
+    <linearGradient id="cbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0052FF;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1673FF;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="95" r="80" fill="url(#cbGrad)"/>
+  <!-- Coinbase "C" mark -->
+  <path d="M 100 45
+           A 50 50 0 1 0 100 145
+           A 50 50 0 1 0 100 45 Z"
+        fill="url(#cbGrad)"/>
+  <!-- Inner white circle ring -->
+  <circle cx="100" cy="95" r="50" fill="none" stroke="white" stroke-width="0"/>
+  <!-- C letter -->
+  <path d="M 118 70
+           A 35 35 0 1 0 118 120"
+        fill="none" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <text x="100" y="185" text-anchor="middle" fill="#0052FF" font-family="Arial, sans-serif" font-size="16" font-weight="bold">AgentKit</text>
+</svg>

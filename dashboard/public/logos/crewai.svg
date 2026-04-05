@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- CrewAI gear/cog icon -->
+  <defs>
+    <linearGradient id="caGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF5A1F;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FF8C42;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#caGrad)"/>
+  <!-- Gear shape -->
+  <g fill="white" transform="translate(100,95)">
+    <!-- Gear teeth -->
+    <rect x="-8" y="-48" width="16" height="16" rx="2"/>
+    <rect x="-8" y="32" width="16" height="16" rx="2"/>
+    <rect x="-48" y="-8" width="16" height="16" rx="2"/>
+    <rect x="32" y="-8" width="16" height="16" rx="2"/>
+    <rect x="24" y="-33" width="16" height="16" rx="2" transform="rotate(45)"/>
+    <rect x="-40" y="-33" width="16" height="16" rx="2" transform="rotate(45)"/>
+    <rect x="24" y="17" width="16" height="16" rx="2" transform="rotate(45)"/>
+    <rect x="-40" y="17" width="16" height="16" rx="2" transform="rotate(45)"/>
+    <!-- Gear body -->
+    <circle cx="0" cy="0" r="32" fill="white"/>
+    <circle cx="0" cy="0" r="18" fill="#FF5A1F"/>
+    <!-- AI symbol - small circuit dots -->
+    <circle cx="0" cy="0" r="5" fill="white"/>
+    <circle cx="-10" cy="-10" r="2.5" fill="white"/>
+    <circle cx="10" cy="-10" r="2.5" fill="white"/>
+    <circle cx="-10" cy="10" r="2.5" fill="white"/>
+    <circle cx="10" cy="10" r="2.5" fill="white"/>
+    <line x1="0" y1="0" x2="-10" y2="-10" stroke="white" stroke-width="1.5"/>
+    <line x1="0" y1="0" x2="10" y2="-10" stroke="white" stroke-width="1.5"/>
+    <line x1="0" y1="0" x2="-10" y2="10" stroke="white" stroke-width="1.5"/>
+    <line x1="0" y1="0" x2="10" y2="10" stroke="white" stroke-width="1.5"/>
+  </g>
+  <text x="100" y="175" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="bold">CrewAI</text>
+</svg>

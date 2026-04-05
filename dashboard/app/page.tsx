@@ -159,13 +159,16 @@ const results = await mem.search('what do I know about ETH?');
           <p className="frameworks-label">Works With</p>
           <div className="frameworks-row">
             {[
-              { icon: '🦜', name: 'LangChain', desc: 'Chat history' },
-              { icon: '⚙️', name: 'CrewAI', desc: 'Crew memory' },
-              { icon: '▲', name: 'Vercel AI', desc: 'Agent tools' },
-              { icon: '💰', name: 'AgentKit', desc: 'Wallets' },
+              { logo: '/logos/langchain.svg', name: 'LangChain', desc: 'Chat history' },
+              { logo: '/logos/crewai.svg', name: 'CrewAI', desc: 'Crew memory' },
+              { logo: '/logos/vercel.png', name: 'Vercel AI', desc: 'Agent tools' },
+              { logo: '/logos/agentkit.svg', name: 'AgentKit', desc: 'Wallets' },
             ].map((f, i) => (
               <div key={i} className="framework-item">
-                <span className="framework-name">{f.icon} {f.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <img src={f.logo} alt={f.name} style={{ height: 28, objectFit: 'contain', filter: 'brightness(1.5)' }} />
+                  <span className="framework-name">{f.name}</span>
+                </div>
                 <span className="framework-desc">{f.desc}</span>
               </div>
             ))}
