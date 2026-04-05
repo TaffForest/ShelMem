@@ -92,6 +92,36 @@ The SDK reads these if not passed in the constructor:
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon/service key |
 
+## Supabase Setup
+
+Create a Supabase project, then run this SQL in the SQL Editor:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS memories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  context TEXT NOT NULL,
+  memory_preview TEXT,
+  shelby_object_id TEXT NOT NULL,
+  aptos_tx_hash TEXT,
+  content_hash CHAR(64),
+  memory_type TEXT DEFAULT 'observation',
+  verified BOOLEAN,
+  embedding vector(1536),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_memories_agent_id ON memories(agent_id);
+CREATE INDEX idx_memories_agent_context ON memories(agent_id, context);
+CREATE INDEX idx_memories_created_at ON memories(created_at DESC);
+ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON memories FOR ALL USING (true) WITH CHECK (true);
+```
+
 ## Types
 
 ```python
@@ -99,6 +129,8 @@ The SDK reads these if not passed in the constructor:
 class WriteResult:
     shelby_object_id: str
     aptos_tx_hash: str
+    content_hash: str
+    memory_type: str
     timestamp: str
 
 @dataclass
@@ -107,6 +139,9 @@ class MemoryRecord:
     context: str
     timestamp: str
     aptos_tx_hash: str
+    content_hash: str
+    memory_type: str
+    verified: Optional[bool]  # True=authentic, False=tampered, None=unverifiable
 ```
 
 ## License

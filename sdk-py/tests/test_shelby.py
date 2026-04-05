@@ -53,7 +53,16 @@ async def test_mock_upload_different_content():
 
 
 @pytest.mark.asyncio
-async def test_mock_download_raises():
+async def test_mock_download_unknown_address_raises():
     storage = ShelbyStorage(mock=True)
-    with pytest.raises(RuntimeError, match="mock mode"):
-        await storage.download("shelby://fakehash")
+    with pytest.raises(KeyError, match="not found in mock store"):
+        await storage.download("shelby://mock/nonexistent")
+
+
+@pytest.mark.asyncio
+async def test_mock_upload_then_download():
+    storage = ShelbyStorage(mock=True)
+    data = b"test memory content for round trip"
+    result = await storage.upload(data, "test_blob")
+    downloaded = await storage.download(result.shelby_address)
+    assert downloaded == data

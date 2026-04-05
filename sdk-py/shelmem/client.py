@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
-import time
+from typing import Optional, List, Dict
 
-from .shelby import ShelbyStorage, compute_hash
+from .shelby import ShelbyStorage, compute_hash, generate_blob_name
 from .supabase_client import MemoryMetadata
 from .types import WriteResult, MemoryRecord, VerifyResult, SearchResult
 from .embeddings import EmbeddingProvider
+
+VALID_MEMORY_TYPES = ("fact", "decision", "preference", "observation")
+
+
+class ShelMemError(Exception):
+    """Base exception for ShelMem errors."""
+    pass
+
+
+class ValidationError(ShelMemError):
+    """Raised when input validation fails."""
+    pass
+
+
+class StorageError(ShelMemError):
+    """Raised when Shelby storage operations fail."""
+    pass
+
+
+class MetadataError(ShelMemError):
+    """Raised when Supabase metadata operations fail."""
+    pass
 
 
 class ShelMem:
@@ -23,13 +45,18 @@ class ShelMem:
         self,
         supabase_url: str,
         supabase_key: str,
-        shelby_api_key: str | None = None,
-        aptos_private_key: str | None = None,
-        network: str = "testnet",
-        mock: bool | None = None,
+        shelby_api_key: Optional[str] = None,
+        aptos_private_key: Optional[str] = None,
+        network: Optional[str] = None,
+        mock: Optional[bool] = None,
         encrypt: bool = False,
-        embedding_provider: EmbeddingProvider | None = None,
+        embedding_provider: Optional[EmbeddingProvider] = None,
     ):
+        if not supabase_url or not supabase_url.startswith("http"):
+            raise ValidationError("supabase_url must be a valid HTTP(S) URL")
+        if not supabase_key:
+            raise ValidationError("supabase_key is required")
+
         self._storage = ShelbyStorage(
             api_key=shelby_api_key,
             private_key=aptos_private_key,
@@ -46,33 +73,50 @@ class ShelMem:
         memory: str,
         context: str,
         memory_type: str = "observation",
-        metadata: dict | None = None,
+        metadata: Optional[Dict] = None,
     ) -> WriteResult:
-        # 1. Serialise memory to bytes
+        """Write a memory to decentralised storage with on-chain proof."""
+        # Input validation
+        if not agent_id or not agent_id.strip():
+            raise ValidationError("agent_id cannot be empty")
+        if not memory:
+            raise ValidationError("memory cannot be empty")
+        if not context or not context.strip():
+            raise ValidationError("context cannot be empty")
+        if memory_type not in VALID_MEMORY_TYPES:
+            raise ValidationError(
+                f"memory_type must be one of: {', '.join(VALID_MEMORY_TYPES)} — got '{memory_type}'"
+            )
+
         data = memory.encode("utf-8")
+        blob_name = generate_blob_name(agent_id)
 
-        # 2. Upload to Shelby (hash computed inside)
-        blob_name = f"{agent_id}_{int(time.time() * 1000)}"
-        result = await self._storage.upload(data, blob_name)
+        try:
+            result = await self._storage.upload(data, blob_name)
+        except Exception as e:
+            raise StorageError(f"Failed to upload to Shelby: {e}") from e
 
-        # 3. Generate embedding if provider configured
+        # Generate embedding if provider configured
         embedding = None
         if self._embed:
             embedding = await self._embed(memory)
 
-        # 4. Record metadata in Supabase with content hash + embedding
         preview = memory[:200]
-        row = self._metadata.insert(
-            agent_id=agent_id,
-            context=context,
-            memory_preview=preview,
-            shelby_object_id=result.shelby_address,
-            aptos_tx_hash=result.shelby_proof,
-            content_hash=result.content_hash,
-            memory_type=memory_type,
-            metadata=metadata,
-            embedding=embedding,
-        )
+
+        try:
+            row = self._metadata.insert(
+                agent_id=agent_id,
+                context=context,
+                memory_preview=preview,
+                shelby_object_id=result.shelby_address,
+                aptos_tx_hash=result.shelby_proof,
+                content_hash=result.content_hash,
+                memory_type=memory_type,
+                metadata=metadata,
+                embedding=embedding,
+            )
+        except Exception as e:
+            raise MetadataError(f"Failed to insert metadata: {e}") from e
 
         return WriteResult(
             shelby_object_id=result.shelby_address,
@@ -85,15 +129,16 @@ class ShelMem:
     async def recall(
         self,
         agent_id: str,
-        context: str | None = None,
+        context: Optional[str] = None,
         limit: int = 10,
-        memory_type: str | None = None,
-    ) -> list[MemoryRecord]:
-        # 1. Query Supabase for metadata
-        rows = self._metadata.query(agent_id, context, memory_type, limit)
+        memory_type: Optional[str] = None,
+    ) -> List[MemoryRecord]:
+        """Retrieve memories. Each is decrypted and verified against its content hash."""
+        if not agent_id or not agent_id.strip():
+            raise ValidationError("agent_id cannot be empty")
 
-        # 2. For each row, retrieve content and verify hash
-        results: list[MemoryRecord] = []
+        rows = self._metadata.query(agent_id, context, memory_type, limit)
+        results: List[MemoryRecord] = []
 
         for row in rows:
             verified = None
@@ -101,11 +146,14 @@ class ShelMem:
                 data = await self._storage.download(row["shelby_object_id"])
                 memory_text = data.decode("utf-8")
 
-                # 3. Verify content integrity
                 stored_hash = row.get("content_hash")
                 if stored_hash:
                     actual_hash = compute_hash(data)
                     verified = actual_hash == stored_hash
+            except KeyError:
+                # Mock store miss — use preview
+                memory_text = row.get("memory_preview") or "[content unavailable]"
+                verified = None
             except Exception:
                 memory_text = row.get("memory_preview") or "[content unavailable]"
                 verified = None
@@ -128,7 +176,7 @@ class ShelMem:
         """Verify a memory's integrity by re-downloading and checking hash."""
         row = self._metadata.get_by_id(memory_id)
         if not row:
-            raise ValueError(f"Memory not found: {memory_id}")
+            raise ValidationError(f"Memory not found: {memory_id}")
 
         expected_hash = row.get("content_hash", "")
 
@@ -150,14 +198,11 @@ class ShelMem:
     async def search(
         self,
         query: str,
-        agent_id: str | None = None,
+        agent_id: Optional[str] = None,
         limit: int = 10,
         threshold: float = 0.5,
-    ) -> list[SearchResult]:
-        """Semantic search — find memories by meaning using vector similarity.
-
-        Requires an embedding_provider to be configured.
-        """
+    ) -> List[SearchResult]:
+        """Semantic search by meaning using vector similarity."""
         if not self._embed:
             raise RuntimeError("Semantic search requires an embedding_provider")
 
@@ -179,5 +224,6 @@ class ShelMem:
             for r in rows
         ]
 
-    def delete(self, memory_id: str) -> None:
+    async def delete(self, memory_id: str) -> None:
+        """Delete a memory from Supabase metadata."""
         self._metadata.delete(memory_id)

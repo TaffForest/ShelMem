@@ -50,6 +50,7 @@ export class ShelbyStorage {
   private readonly apiKey?: string;
   private readonly privateKey?: string;
   private readonly network: 'testnet' | 'shelbynet';
+  private mockStore: Map<string, Uint8Array> = new Map();
 
   constructor(opts: {
     apiKey?: string;
@@ -62,7 +63,8 @@ export class ShelbyStorage {
     this.encrypt = opts.encrypt ?? false;
     this.apiKey = opts.apiKey ?? process.env.SHELBY_API_KEY;
     this.privateKey = opts.privateKey ?? process.env.SHELBY_ACCOUNT_PRIVATE_KEY;
-    this.network = opts.network ?? (process.env.SHELBY_NETWORK as 'testnet' | 'shelbynet') ?? 'shelbynet';
+    // Fix: use nullish coalescing to allow env var to be read
+    this.network = opts.network ?? (process.env.SHELBY_NETWORK as 'testnet' | 'shelbynet') ?? 'testnet';
   }
 
   private getClient(): ShelbyNodeClient {
@@ -103,10 +105,12 @@ export class ShelbyStorage {
     const contentHash = computeHash(data);
 
     if (this.mock) {
-      const shelbyAddress = `shelby://${contentHash}`;
+      const shelbyAddress = `shelby://mock/${blobName}`;
       const proofHash = createHash('sha256')
         .update(shelbyAddress + Date.now())
         .digest('hex');
+      // Store content locally for mock download
+      this.mockStore.set(shelbyAddress, data);
       return { shelbyAddress, shelbyProof: `0x${proofHash}`, contentHash };
     }
 
@@ -133,7 +137,11 @@ export class ShelbyStorage {
 
   async download(shelbyAddress: string, retries = 1): Promise<Uint8Array> {
     if (this.mock) {
-      throw new Error('Download not available in mock mode');
+      const content = this.mockStore.get(shelbyAddress);
+      if (!content) {
+        throw new Error(`Memory not found in mock store: ${shelbyAddress}`);
+      }
+      return content;
     }
 
     const client = this.getClient();

@@ -51,7 +51,14 @@ describe('ShelbyStorage (mock mode)', () => {
     expect(a.contentHash).not.toBe(b.contentHash);
   });
 
-  it('download throws in mock mode', async () => {
-    await expect(storage.download('shelby://fakehash')).rejects.toThrow('mock mode');
+  it('download throws for unknown address in mock mode', async () => {
+    await expect(storage.download('shelby://mock/nonexistent')).rejects.toThrow('not found in mock store');
+  });
+
+  it('mock upload then download returns same content', async () => {
+    const data = new TextEncoder().encode('round trip test');
+    const result = await storage.upload(data, 'roundtrip_blob');
+    const downloaded = await storage.download(result.shelbyAddress);
+    expect(new TextDecoder().decode(downloaded)).toBe('round trip test');
   });
 });
