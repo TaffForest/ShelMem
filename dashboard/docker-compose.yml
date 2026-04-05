@@ -1,0 +1,11 @@
+services:
+  shelmem:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: https://tjystaagxkbdpqdansow.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqeXN0YWFneGtiZHBxZGFuc293Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTc4NDcsImV4cCI6MjA5MDczMzg0N30.9JCUFAhMn3WOBPRBxFzIOSC6v2fPY6KCPunH8s9w6TU
+        NEXT_PUBLIC_APTOS_NETWORK: testnet
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
