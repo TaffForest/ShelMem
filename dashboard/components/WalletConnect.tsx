@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
+import { Button, Text, Flex, Code } from '@radix-ui/themes';
 
 export default function WalletConnect({
   onConnect,
@@ -12,10 +13,7 @@ export default function WalletConnect({
 
   const handleConnect = useCallback(async () => {
     try {
-      const petra = wallets?.find((w) =>
-        w.name.toLowerCase().includes('petra')
-      );
-
+      const petra = wallets?.find((w) => w.name.toLowerCase().includes('petra'));
       if (petra) {
         await connect(petra.name);
       } else if (wallets?.length > 0) {
@@ -33,66 +31,27 @@ export default function WalletConnect({
   }, [wallets, connect]);
 
   const handleDisconnect = useCallback(async () => {
-    try {
-      await disconnect();
-    } catch {
-      // ignore
-    }
+    try { await disconnect(); } catch { /* ignore */ }
   }, [disconnect]);
 
-  // Notify parent when connection state changes
   if (connected && account?.address) {
-    const addr = typeof account.address === 'string'
-      ? account.address
-      : account.address.toString();
-    // Fire onConnect on next tick to avoid setState-during-render
+    const addr = typeof account.address === 'string' ? account.address : account.address.toString();
     setTimeout(() => onConnect(addr), 0);
-  }
-
-  if (connected && account?.address) {
-    const addr = typeof account.address === 'string'
-      ? account.address
-      : account.address.toString();
     const truncated = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ color: 'var(--color-accent)', fontSize: 14, fontFamily: 'var(--font-mono)' }}>
-          {truncated}
-        </span>
-        <button
-          onClick={handleDisconnect}
-          style={{
-            padding: '6px 16px',
-            fontSize: 13,
-            border: '1px solid var(--color-border)',
-            borderRadius: 6,
-            background: 'transparent',
-            color: 'var(--color-text-muted)',
-            cursor: 'pointer',
-          }}
-        >
+      <Flex align="center" gap="3">
+        <Code size="2" variant="soft" color="lime">{truncated}</Code>
+        <Button size="1" variant="outline" onClick={handleDisconnect} style={{ cursor: 'pointer' }}>
           Disconnect
-        </button>
-      </div>
+        </Button>
+      </Flex>
     );
   }
 
   return (
-    <button
-      onClick={handleConnect}
-      style={{
-        padding: '8px 20px',
-        background: 'var(--color-accent)',
-        color: '#050505',
-        fontSize: 14,
-        fontWeight: 600,
-        borderRadius: 6,
-        border: 'none',
-        cursor: 'pointer',
-      }}
-    >
+    <Button size="2" variant="solid" onClick={handleConnect} style={{ cursor: 'pointer' }}>
       Connect Wallet
-    </button>
+    </Button>
   );
 }

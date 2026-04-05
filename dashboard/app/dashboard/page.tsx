@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Box, Flex, Text, Heading } from '@radix-ui/themes';
 import WalletProvider from '@/components/WalletProvider';
 import TestnetBanner from '@/components/TestnetBanner';
 import WalletConnect from '@/components/WalletConnect';
@@ -14,54 +15,39 @@ export default function DashboardPage() {
     <WalletProvider>
       <TestnetBanner />
 
-      <header
+      <Flex
+        align="center"
+        justify="between"
+        px="5"
+        py="3"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 32px',
-          borderBottom: '1px solid var(--color-border)',
-          background: 'rgba(5, 5, 5, 0.85)',
+          borderBottom: '1px solid var(--gray-4)',
+          background: 'var(--color-background)',
           backdropFilter: 'blur(12px)',
           position: 'sticky',
           top: 0,
           zIndex: 100,
         }}
       >
-        <div>
-          <Link href="/" style={{ fontSize: 20, fontWeight: 700 }}>
-            Shel<span style={{ color: 'var(--color-accent)' }}>Mem</span>
+        <Box>
+          <Link href="/">
+            <Text size="4" weight="bold">Shel<span style={{ color: 'var(--accent-9)' }}>Mem</span></Text>
           </Link>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            Agent Memory Dashboard
-          </p>
-        </div>
+          <Text size="1" color="gray" style={{ display: 'block', marginTop: 2 }}>Agent Memory Dashboard</Text>
+        </Box>
         <WalletConnect onConnect={setWalletAddress} />
-      </header>
+      </Flex>
 
-      <main style={{ flex: 1, padding: '24px 32px' }}>
+      <Box style={{ flex: 1, padding: '24px 32px' }}>
         <MemoryTable walletAddress={walletAddress} />
-      </main>
+      </Box>
 
-      <footer
-        style={{
-          padding: '24px 32px',
-          textAlign: 'center',
-          fontSize: 12,
-          color: 'var(--color-text-muted)',
-          borderTop: '1px solid var(--color-border)',
-        }}
-      >
-        Powered by{' '}
-        <a
-          href="https://forestinfra.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          Forest
-        </a>
-      </footer>
+      <Box style={{ padding: '24px 32px', textAlign: 'center', borderTop: '1px solid var(--gray-4)' }}>
+        <Text size="1" color="gray">
+          Powered by{' '}
+          <a href="https://forestinfra.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-9)' }}>Forest</a>
+        </Text>
+      </Box>
     </WalletProvider>
   );
 }

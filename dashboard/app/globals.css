@@ -1,40 +1,13 @@
 @import "tailwindcss";
 
-@theme {
-  --color-bg: #050505;
-  --color-bg-card: #0d0d0d;
-  --color-bg-surface: #141414;
-  --color-bg-hover: #252525;
-  --color-border: #1a1a1a;
-  --color-accent: #8BC53F;
-  --color-accent-dark: #6BA030;
-  --color-accent-glow: rgba(139, 197, 63, 0.3);
-  --color-text: #e8e8e8;
-  --color-text-muted: #999999;
-  --color-success: #4ade80;
-  --color-error: #f87171;
-  --font-sans: 'DM Sans', sans-serif;
-  --font-serif: 'Instrument Serif', serif;
-  --font-mono: 'JetBrains Mono', monospace;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
-  font-family: var(--font-sans);
-  background: var(--color-bg);
-  color: var(--color-text);
-  min-height: 100vh;
+  font-family: 'DM Sans', var(--default-font-family), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code, .mono {
-  font-family: var(--font-mono);
+code, .mono, .rt-Code {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 a {
@@ -44,5 +17,12 @@ a {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--gray-5) transparent;
+}
+
+/* Override Radix accent to match ShelKit #8BC53F exactly */
+.radix-themes {
+  --accent-9: #8BC53F;
+  --accent-10: #7AB035;
+  --accent-11: #8BC53F;
 }

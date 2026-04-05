@@ -1,20 +1,13 @@
 'use client';
 
+import { Callout } from '@radix-ui/themes';
+
 export default function TestnetBanner() {
   return (
-    <div
-      style={{
-        width: '100%',
-        background: 'var(--color-accent)',
-        color: '#050505',
-        textAlign: 'center',
-        padding: '8px 0',
-        fontSize: 13,
-        fontWeight: 600,
-        letterSpacing: '0.02em',
-      }}
-    >
-      ShelMem is running on Shelby testnet
-    </div>
+    <Callout.Root color="lime" size="1" variant="surface" style={{ borderRadius: 0, justifyContent: 'center' }}>
+      <Callout.Text size="2" weight="medium">
+        ShelMem is running on Shelby testnet
+      </Callout.Text>
+    </Callout.Root>
   );
 }

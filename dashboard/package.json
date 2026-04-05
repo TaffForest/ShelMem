@@ -10,6 +10,7 @@
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.2.1",
     "@aptos-labs/wallet-adapter-react": "^8.3.2",
+    "@radix-ui/themes": "^3.3.0",
     "@supabase/supabase-js": "^2.49.0",
     "buffer": "^6.0.3",
     "next": "^15.1.0",

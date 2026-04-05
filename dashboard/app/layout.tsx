@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import '@radix-ui/themes/styles.css';
 import './globals.css';
+import { Theme } from '@radix-ui/themes';
 
 export const metadata: Metadata = {
   title: 'ShelMem — Decentralised Agent Memory',
-  description: 'Decentralised AI agent memory powered by Shelby Protocol and Aptos',
+  description: 'Tamper-proof, encrypted, searchable memory for AI agents. Powered by Shelby Protocol and Aptos.',
 };
 
 export default function RootLayout({
@@ -12,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -21,8 +23,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen flex flex-col">
-        {children}
+      <body>
+        <Theme appearance="dark" accentColor="lime" grayColor="sand" radius="medium" scaling="100%">
+          {children}
+        </Theme>
       </body>
     </html>
   );
