@@ -85,11 +85,9 @@ export class ShelMem {
     memory_type?: MemoryType
   ): Promise<MemoryRecord[]> {
     const rows = await this.metadata.query(agent_id, context, memory_type, limit);
-
     const decoder = new TextDecoder();
-    const results: MemoryRecord[] = [];
 
-    for (const row of rows) {
+    const results = await Promise.all(rows.map(async (row): Promise<MemoryRecord> => {
       let memoryText: string;
       let verified: boolean | null = null;
 
@@ -106,7 +104,12 @@ export class ShelMem {
         verified = null;
       }
 
-      results.push({
+      // Write back verified status if it changed
+      if (verified !== null && verified !== row.verified) {
+        this.metadata.updateVerified(row.id, verified).catch(() => {});
+      }
+
+      return {
         memory: memoryText,
         context: row.context,
         timestamp: row.created_at,
@@ -114,8 +117,8 @@ export class ShelMem {
         content_hash: row.content_hash ?? '',
         memory_type: (row.memory_type as MemoryType) ?? 'observation',
         verified,
-      });
-    }
+      };
+    }));
 
     return results;
   }
@@ -172,6 +175,11 @@ export class ShelMem {
   }
 
   async delete(id: string): Promise<void> {
+    // Best-effort: attempt to delete the Shelby blob before removing metadata
+    const row = await this.metadata.getById(id);
+    if (row) {
+      await this.storage.tryDelete(row.shelby_object_id);
+    }
     await this.metadata.delete(id);
   }
 }

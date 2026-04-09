@@ -97,6 +97,13 @@ export class MemoryMetadata {
     return data as MemoryRow;
   }
 
+  async updateVerified(id: string, verified: boolean): Promise<void> {
+    await this.client
+      .from('memories')
+      .update({ verified })
+      .eq('id', id);
+  }
+
   async delete(id: string): Promise<void> {
     const { error } = await this.client
       .from('memories')

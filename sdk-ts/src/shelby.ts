@@ -59,8 +59,12 @@ export class ShelbyStorage {
     mock?: boolean;
     encrypt?: boolean;
   }) {
-    this.mock = opts.mock ?? (process.env.SHELBY_MOCK !== 'false');
+    this.mock = opts.mock ?? (process.env.SHELBY_MOCK === 'true');
     this.encrypt = opts.encrypt ?? false;
+
+    if (this.mock) {
+      console.warn('ShelMem: running in mock mode — data will not persist');
+    }
     this.apiKey = opts.apiKey ?? process.env.SHELBY_API_KEY;
     this.privateKey = opts.privateKey ?? process.env.SHELBY_ACCOUNT_PRIVATE_KEY;
     // Fix: use nullish coalescing to allow env var to be read
@@ -182,6 +186,22 @@ export class ShelbyStorage {
       offset += chunk.length;
     }
     return result;
+  }
+
+  async tryDelete(shelbyAddress: string): Promise<void> {
+    if (this.mock) {
+      this.mockStore.delete(shelbyAddress);
+      return;
+    }
+
+    try {
+      const { accountAddress, blobName } = parseShelbyAddress(shelbyAddress);
+      const client = this.getClient();
+      // Best-effort deletion — Shelby SDK may not support this
+      await (client as any).delete?.({ account: accountAddress, blobName });
+    } catch {
+      console.warn(`ShelMem: Shelby blob deletion not supported or failed for ${shelbyAddress}. Content will expire naturally.`);
+    }
   }
 }
 

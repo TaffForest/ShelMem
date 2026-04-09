@@ -84,13 +84,17 @@ class ShelbyStorage:
         self.network = resolved_network
         self.base_url = NETWORK_URLS[self.network]
 
-        # Mock mode
+        # Mock mode — off by default, must be explicitly enabled
         if mock is not None:
             self.mock = mock
         else:
-            self.mock = os.environ.get("SHELBY_MOCK", "true").lower() != "false"
+            self.mock = os.environ.get("SHELBY_MOCK", "false").lower() == "true"
 
-        # BUG-2 fix: local content store for mock mode
+        if self.mock:
+            import warnings
+            warnings.warn("ShelMem: running in mock mode — data will not persist")
+
+        # Local content store for mock mode
         self._mock_store: Dict[str, bytes] = {}
 
     def _get_encryption_key(self) -> bytes:
@@ -190,6 +194,30 @@ class ShelbyStorage:
         )
         response.raise_for_status()
         return response.content
+
+    async def try_delete(self, shelby_address: str) -> None:
+        """Best-effort Shelby blob deletion. Logs warning on failure."""
+        if self.mock:
+            self._mock_store.pop(shelby_address, None)
+            return
+
+        try:
+            account_address, blob_name = _parse_shelby_address(shelby_address)
+            client = await self._get_client()
+            headers: Dict[str, str] = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
+            await client.delete(
+                f"{self.base_url}/v1/blobs/{account_address}/{blob_name}",
+                headers=headers,
+            )
+        except Exception:
+            import warnings
+            warnings.warn(
+                f"ShelMem: Shelby blob deletion not supported or failed for {shelby_address}. "
+                "Content will expire naturally."
+            )
 
 
 def _parse_shelby_address(address: str) -> tuple[str, str]:

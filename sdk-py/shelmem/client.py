@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional, List, Dict
 
 from .shelby import ShelbyStorage, compute_hash, generate_blob_name
@@ -138,9 +139,8 @@ class ShelMem:
             raise ValidationError("agent_id cannot be empty")
 
         rows = self._metadata.query(agent_id, context, memory_type, limit)
-        results: List[MemoryRecord] = []
 
-        for row in rows:
+        async def _process_row(row: Dict) -> MemoryRecord:
             verified = None
             try:
                 data = await self._storage.download(row["shelby_object_id"])
@@ -151,26 +151,30 @@ class ShelMem:
                     actual_hash = compute_hash(data)
                     verified = actual_hash == stored_hash
             except KeyError:
-                # Mock store miss — use preview
                 memory_text = row.get("memory_preview") or "[content unavailable]"
                 verified = None
             except Exception:
                 memory_text = row.get("memory_preview") or "[content unavailable]"
                 verified = None
 
-            results.append(
-                MemoryRecord(
-                    memory=memory_text,
-                    context=row["context"],
-                    timestamp=row["created_at"],
-                    aptos_tx_hash=row.get("aptos_tx_hash", ""),
-                    content_hash=row.get("content_hash", ""),
-                    memory_type=row.get("memory_type", "observation"),
-                    verified=verified,
-                )
+            # Write back verified status if it changed
+            if verified is not None and verified != row.get("verified"):
+                try:
+                    self._metadata.update_verified(row["id"], verified)
+                except Exception:
+                    pass
+
+            return MemoryRecord(
+                memory=memory_text,
+                context=row["context"],
+                timestamp=row["created_at"],
+                aptos_tx_hash=row.get("aptos_tx_hash", ""),
+                content_hash=row.get("content_hash", ""),
+                memory_type=row.get("memory_type", "observation"),
+                verified=verified,
             )
 
-        return results
+        return list(await asyncio.gather(*[_process_row(row) for row in rows]))
 
     async def verify(self, memory_id: str) -> VerifyResult:
         """Verify a memory's integrity by re-downloading and checking hash."""
@@ -225,5 +229,8 @@ class ShelMem:
         ]
 
     async def delete(self, memory_id: str) -> None:
-        """Delete a memory from Supabase metadata."""
+        """Delete a memory. Attempts Shelby blob deletion before removing metadata."""
+        row = self._metadata.get_by_id(memory_id)
+        if row:
+            await self._storage.try_delete(row["shelby_object_id"])
         self._metadata.delete(memory_id)

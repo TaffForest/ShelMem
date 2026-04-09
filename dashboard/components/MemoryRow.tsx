@@ -9,8 +9,8 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function explorerUrl(txHash: string): string {
-  return `https://explorer.shelby.xyz`;
+function explorerUrl(shelbyObjectId: string): string {
+  return `https://explorer.shelby.xyz/blob/${encodeURIComponent(shelbyObjectId)}`;
 }
 
 const typeColors: Record<string, 'blue' | 'amber' | 'purple' | 'lime'> = {
@@ -52,7 +52,7 @@ export default function MemoryRow({
         <Table.Cell><Code size="1" variant="ghost" color="gray">{formatDate(row.created_at)}</Code></Table.Cell>
         <Table.Cell>
           {row.aptos_tx_hash ? (
-            <a href={explorerUrl(row.aptos_tx_hash)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+            <a href={explorerUrl(row.shelby_object_id)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
               <Badge size="1" variant="surface" color="lime">Proof ↗</Badge>
             </a>
           ) : <Text size="1" color="gray">—</Text>}

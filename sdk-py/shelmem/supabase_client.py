@@ -93,5 +93,8 @@ class MemoryMetadata:
         )
         return result.data[0] if result.data else None
 
+    def update_verified(self, memory_id: str, verified: bool) -> None:
+        self.client.table("memories").update({"verified": verified}).eq("id", memory_id).execute()
+
     def delete(self, memory_id: str) -> None:
         self.client.table("memories").delete().eq("id", memory_id).execute()
