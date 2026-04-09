@@ -3,6 +3,9 @@ import { ShelbyNodeClient } from '@shelby-protocol/sdk/node';
 import { Network, Ed25519Account, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+// Financial records need longer retention
+const TREASURY_TYPES = ['transaction_record', 'balance_snapshot', 'spending_policy'];
 
 export interface ShelbyUploadResult {
   shelbyAddress: string;
@@ -104,7 +107,7 @@ export class ShelbyStorage {
     return this.encryptionKey;
   }
 
-  async upload(data: Uint8Array, blobName: string): Promise<ShelbyUploadResult> {
+  async upload(data: Uint8Array, blobName: string, memoryType?: string): Promise<ShelbyUploadResult> {
     // Hash plaintext BEFORE encryption
     const contentHash = computeHash(data);
 
@@ -126,7 +129,8 @@ export class ShelbyStorage {
 
     const client = this.getClient();
     const account = this.getAccount();
-    const expirationMicros = (Date.now() + THIRTY_DAYS_MS) * 1000;
+    const ttlMs = (memoryType && TREASURY_TYPES.includes(memoryType)) ? ONE_YEAR_MS : THIRTY_DAYS_MS;
+    const expirationMicros = (Date.now() + ttlMs) * 1000;
 
     await client.upload({
       signer: account,

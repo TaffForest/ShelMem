@@ -22,6 +22,10 @@ class MemoryMetadata:
         memory_type: str = "observation",
         metadata: Optional[dict] = None,
         embedding: Optional[List[float]] = None,
+        amount: Optional[float] = None,
+        currency: Optional[str] = None,
+        counterparty: Optional[str] = None,
+        tx_status: Optional[str] = None,
     ) -> dict:
         insert_data = {
             "agent_id": agent_id,
@@ -36,6 +40,16 @@ class MemoryMetadata:
 
         if embedding is not None:
             insert_data["embedding"] = json.dumps(embedding)
+
+        # Treasury fields
+        if amount is not None:
+            insert_data["amount"] = amount
+        if currency is not None:
+            insert_data["currency"] = currency
+        if counterparty is not None:
+            insert_data["counterparty"] = counterparty
+        if tx_status is not None:
+            insert_data["tx_status"] = tx_status
 
         result = (
             self.client.table("memories")

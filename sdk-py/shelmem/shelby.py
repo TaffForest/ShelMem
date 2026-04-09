@@ -15,6 +15,8 @@ from typing import Dict, Optional
 import httpx
 
 VALID_NETWORKS = ("testnet", "shelbynet")
+# Financial records need longer retention
+TREASURY_TYPES = ("transaction_record", "balance_snapshot", "spending_policy")
 NETWORK_URLS = {
     "testnet": "https://api.testnet.shelby.xyz/shelby",
     "shelbynet": "https://api.shelbynet.shelby.xyz/shelby",

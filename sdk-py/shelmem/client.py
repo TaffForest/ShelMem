@@ -7,10 +7,13 @@ from typing import Optional, List, Dict
 
 from .shelby import ShelbyStorage, compute_hash, generate_blob_name
 from .supabase_client import MemoryMetadata
-from .types import WriteResult, MemoryRecord, VerifyResult, SearchResult
+from .types import WriteResult, MemoryRecord, VerifyResult, SearchResult, RecordTransactionParams, RecordBalanceParams
 from .embeddings import EmbeddingProvider
 
-VALID_MEMORY_TYPES = ("fact", "decision", "preference", "observation")
+VALID_MEMORY_TYPES = (
+    "fact", "decision", "preference", "observation",
+    "transaction_record", "balance_snapshot", "spending_policy",
+)
 
 
 class ShelMemError(Exception):
@@ -75,9 +78,12 @@ class ShelMem:
         context: str,
         memory_type: str = "observation",
         metadata: Optional[Dict] = None,
+        amount: Optional[float] = None,
+        currency: Optional[str] = None,
+        counterparty: Optional[str] = None,
+        tx_status: Optional[str] = None,
     ) -> WriteResult:
         """Write a memory to decentralised storage with on-chain proof."""
-        # Input validation
         if not agent_id or not agent_id.strip():
             raise ValidationError("agent_id cannot be empty")
         if not memory:
@@ -97,7 +103,6 @@ class ShelMem:
         except Exception as e:
             raise StorageError(f"Failed to upload to Shelby: {e}") from e
 
-        # Generate embedding if provider configured
         embedding = None
         if self._embed:
             embedding = await self._embed(memory)
@@ -115,6 +120,10 @@ class ShelMem:
                 memory_type=memory_type,
                 metadata=metadata,
                 embedding=embedding,
+                amount=amount,
+                currency=currency,
+                counterparty=counterparty,
+                tx_status=tx_status,
             )
         except Exception as e:
             raise MetadataError(f"Failed to insert metadata: {e}") from e
@@ -125,6 +134,10 @@ class ShelMem:
             content_hash=result.content_hash,
             memory_type=memory_type,
             timestamp=row["created_at"],
+            amount=row.get("amount"),
+            currency=row.get("currency"),
+            counterparty=row.get("counterparty"),
+            tx_status=row.get("tx_status"),
         )
 
     async def recall(
@@ -172,6 +185,10 @@ class ShelMem:
                 content_hash=row.get("content_hash", ""),
                 memory_type=row.get("memory_type", "observation"),
                 verified=verified,
+                amount=row.get("amount"),
+                currency=row.get("currency"),
+                counterparty=row.get("counterparty"),
+                tx_status=row.get("tx_status"),
             )
 
         return list(await asyncio.gather(*[_process_row(row) for row in rows]))
@@ -234,3 +251,36 @@ class ShelMem:
         if row:
             await self._storage.try_delete(row["shelby_object_id"])
         self._metadata.delete(memory_id)
+
+    # --- Treasury convenience methods ---
+
+    async def record_transaction(self, params: RecordTransactionParams) -> WriteResult:
+        """Record an agent transaction. Sets memory_type='transaction_record'."""
+        return await self.write(
+            agent_id=params.agent_id,
+            memory=params.memory,
+            context=params.context,
+            memory_type="transaction_record",
+            metadata=params.metadata,
+            amount=params.amount,
+            currency=params.currency,
+            counterparty=params.counterparty,
+            tx_status=params.tx_status,
+        )
+
+    async def record_balance_snapshot(self, params: RecordBalanceParams) -> WriteResult:
+        """Record a point-in-time balance snapshot. Sets memory_type='balance_snapshot'."""
+        return await self.write(
+            agent_id=params.agent_id,
+            memory=params.memory,
+            context=params.context,
+            memory_type="balance_snapshot",
+            metadata=params.metadata,
+            amount=params.amount,
+            currency=params.currency,
+        )
+
+    async def get_latest_balance(self, agent_id: str) -> Optional[MemoryRecord]:
+        """Get the most recent balance snapshot. Returns None if none exist."""
+        results = await self.recall(agent_id, None, 1, "balance_snapshot")
+        return results[0] if results else None

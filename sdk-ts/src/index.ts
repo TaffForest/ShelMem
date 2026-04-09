@@ -1,8 +1,14 @@
 import { ShelbyStorage, computeHash } from './shelby.js';
 import { MemoryMetadata } from './supabase.js';
-import type { ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult, SearchResult } from './types.js';
+import type {
+  ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult,
+  SearchResult, TreasuryFields, RecordTransactionParams, RecordBalanceParams,
+} from './types.js';
 
-export type { ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult, SearchResult } from './types.js';
+export type {
+  ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult,
+  SearchResult, TreasuryFields, TreasuryMemoryType, RecordTransactionParams, RecordBalanceParams,
+} from './types.js';
 export { computeHash } from './shelby.js';
 export { openaiEmbeddings } from './embeddings.js';
 export type { EmbeddingProvider } from './embeddings.js';
@@ -37,15 +43,15 @@ export class ShelMem {
     memory: string,
     context: string,
     memory_type: MemoryType = 'observation',
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
+    treasury?: TreasuryFields
   ): Promise<WriteResult> {
     const encoder = new TextEncoder();
     const bytes = encoder.encode(memory);
 
     const blobName = `${agent_id}_${Date.now()}`;
-    const { shelbyAddress, shelbyProof, contentHash } = await this.storage.upload(bytes, blobName);
+    const { shelbyAddress, shelbyProof, contentHash } = await this.storage.upload(bytes, blobName, memory_type);
 
-    // Generate embedding if provider is configured
     let embedding: number[] | undefined;
     if (this.embed) {
       embedding = await this.embed(memory);
@@ -63,6 +69,7 @@ export class ShelMem {
       memory_type,
       metadata,
       embedding,
+      treasury,
     });
 
     return {
@@ -71,6 +78,10 @@ export class ShelMem {
       content_hash: contentHash,
       memory_type,
       timestamp: row.created_at,
+      amount: row.amount,
+      currency: row.currency,
+      counterparty: row.counterparty,
+      tx_status: row.tx_status,
     };
   }
 
@@ -104,7 +115,6 @@ export class ShelMem {
         verified = null;
       }
 
-      // Write back verified status if it changed
       if (verified !== null && verified !== row.verified) {
         this.metadata.updateVerified(row.id, verified).catch(() => {});
       }
@@ -117,6 +127,10 @@ export class ShelMem {
         content_hash: row.content_hash ?? '',
         memory_type: (row.memory_type as MemoryType) ?? 'observation',
         verified,
+        amount: row.amount,
+        currency: row.currency,
+        counterparty: row.counterparty,
+        tx_status: row.tx_status,
       };
     }));
 
@@ -125,12 +139,6 @@ export class ShelMem {
 
   /**
    * Semantic search — find memories by meaning using vector similarity.
-   * Requires an embedding provider to be configured.
-   *
-   * @param query - Natural language query (e.g. "what do I know about ETH?")
-   * @param agent_id - Optional agent filter
-   * @param limit - Max results (default 10)
-   * @param threshold - Minimum similarity 0-1 (default 0.5)
    */
   async search(
     query: string,
@@ -175,11 +183,59 @@ export class ShelMem {
   }
 
   async delete(id: string): Promise<void> {
-    // Best-effort: attempt to delete the Shelby blob before removing metadata
     const row = await this.metadata.getById(id);
     if (row) {
       await this.storage.tryDelete(row.shelby_object_id);
     }
     await this.metadata.delete(id);
+  }
+
+  // --- Treasury convenience methods ---
+
+  /**
+   * Record an agent transaction. Sets memory_type='transaction_record'.
+   * Requires amount, currency, and counterparty.
+   */
+  async recordTransaction(params: RecordTransactionParams): Promise<WriteResult> {
+    return this.write(
+      params.agentId,
+      params.memory,
+      params.context,
+      'transaction_record',
+      params.metadata,
+      {
+        amount: params.amount,
+        currency: params.currency,
+        counterparty: params.counterparty,
+        tx_status: params.txStatus ?? 'pending',
+      }
+    );
+  }
+
+  /**
+   * Record a point-in-time balance snapshot. Sets memory_type='balance_snapshot'.
+   * Requires amount and currency.
+   */
+  async recordBalanceSnapshot(params: RecordBalanceParams): Promise<WriteResult> {
+    return this.write(
+      params.agentId,
+      params.memory,
+      params.context,
+      'balance_snapshot',
+      params.metadata,
+      {
+        amount: params.amount,
+        currency: params.currency,
+      }
+    );
+  }
+
+  /**
+   * Get the most recent balance snapshot for an agent.
+   * Returns null if no balance_snapshot exists.
+   */
+  async getLatestBalance(agentId: string): Promise<MemoryRecord | null> {
+    const results = await this.recall(agentId, undefined, 1, 'balance_snapshot');
+    return results.length > 0 ? results[0] : null;
   }
 }

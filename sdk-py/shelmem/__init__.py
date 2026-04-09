@@ -1,5 +1,8 @@
 from .client import ShelMem, ShelMemError, ValidationError, StorageError, MetadataError
-from .types import WriteResult, MemoryRecord, VerifyResult, SearchResult, MemoryType
+from .types import (
+    WriteResult, MemoryRecord, VerifyResult, SearchResult, MemoryType,
+    TreasuryMemoryType, RecordTransactionParams, RecordBalanceParams,
+)
 from .embeddings import openai_embeddings, EmbeddingProvider
 
 __all__ = [
@@ -13,6 +16,9 @@ __all__ = [
     "VerifyResult",
     "SearchResult",
     "MemoryType",
+    "TreasuryMemoryType",
+    "RecordTransactionParams",
+    "RecordBalanceParams",
     "openai_embeddings",
     "EmbeddingProvider",
 ]

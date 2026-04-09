@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { MemoryRow, MemoryType, SearchResult } from './types.js';
+import type { MemoryRow, MemoryType, SearchResult, TreasuryFields } from './types.js';
 
 export class MemoryMetadata {
   private client: SupabaseClient;
@@ -18,6 +18,7 @@ export class MemoryMetadata {
     memory_type: MemoryType;
     metadata?: Record<string, unknown>;
     embedding?: number[];
+    treasury?: TreasuryFields;
   }): Promise<MemoryRow> {
     const insertData: Record<string, unknown> = {
       agent_id: row.agent_id,
@@ -32,6 +33,13 @@ export class MemoryMetadata {
 
     if (row.embedding) {
       insertData.embedding = JSON.stringify(row.embedding);
+    }
+
+    if (row.treasury) {
+      if (row.treasury.amount !== undefined) insertData.amount = row.treasury.amount;
+      if (row.treasury.currency) insertData.currency = row.treasury.currency;
+      if (row.treasury.counterparty) insertData.counterparty = row.treasury.counterparty;
+      if (row.treasury.tx_status) insertData.tx_status = row.treasury.tx_status;
     }
 
     const { data, error } = await this.client

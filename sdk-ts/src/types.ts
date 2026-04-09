@@ -1,4 +1,6 @@
-export type MemoryType = 'fact' | 'decision' | 'preference' | 'observation';
+export type MemoryType = 'fact' | 'decision' | 'preference' | 'observation' | 'transaction_record' | 'balance_snapshot' | 'spending_policy';
+
+export type TreasuryMemoryType = 'transaction_record' | 'balance_snapshot' | 'spending_policy';
 
 export interface ShelMemConfig {
   shelbyApiKey?: string;
@@ -11,12 +13,23 @@ export interface ShelMemConfig {
   embeddingProvider?: (text: string) => Promise<number[]>;
 }
 
+export interface TreasuryFields {
+  amount?: number;
+  currency?: string;
+  counterparty?: string;
+  tx_status?: string;
+}
+
 export interface WriteResult {
   shelby_object_id: string;
   aptos_tx_hash: string;
   content_hash: string;
   memory_type: MemoryType;
   timestamp: string;
+  amount?: number | null;
+  currency?: string | null;
+  counterparty?: string | null;
+  tx_status?: string | null;
 }
 
 export interface MemoryRecord {
@@ -27,6 +40,10 @@ export interface MemoryRecord {
   content_hash: string;
   memory_type: MemoryType;
   verified: boolean | null;
+  amount?: number | null;
+  currency?: string | null;
+  counterparty?: string | null;
+  tx_status?: string | null;
 }
 
 export interface VerifyResult {
@@ -46,6 +63,10 @@ export interface MemoryRow {
   memory_type: string | null;
   verified: boolean | null;
   metadata: Record<string, unknown>;
+  amount: number | null;
+  currency: string | null;
+  counterparty: string | null;
+  tx_status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,4 +81,24 @@ export interface SearchResult {
   aptos_tx_hash: string | null;
   created_at: string;
   similarity: number;
+}
+
+export interface RecordTransactionParams {
+  agentId: string;
+  memory: string;
+  context: string;
+  amount: number;
+  currency: string;
+  counterparty: string;
+  txStatus?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RecordBalanceParams {
+  agentId: string;
+  memory: string;
+  context: string;
+  amount: number;
+  currency: string;
+  metadata?: Record<string, unknown>;
 }
