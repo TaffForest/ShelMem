@@ -1,65 +1,55 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useMemo } from 'react';
 import type { MemoryRow as MemoryRowType } from '@/lib/supabase';
-import { Table, Text, Box, Flex, TextField, Select, Card, Code, Heading, Button } from '@radix-ui/themes';
+import { TREASURY_TYPES } from '@/lib/supabase';
+import { Table, Text, Box, Flex, TextField, Select, Card, Code, Heading } from '@radix-ui/themes';
 import MemoryRow from './MemoryRow';
 import StatsBar from './StatsBar';
 
-export default function MemoryTable({ walletAddress }: { walletAddress: string | null }) {
-  const [memories, setMemories] = useState<MemoryRowType[]>([]);
-  const [loading, setLoading] = useState(false);
+interface MemoryTableProps {
+  memories: MemoryRowType[];
+  loading: boolean;
+  walletAddress: string | null;
+  onDelete: (id: string) => void;
+}
+
+export default function MemoryTable({ memories, loading, walletAddress, onDelete }: MemoryTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [agentFilter, setAgentFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
-  useEffect(() => {
-    if (!walletAddress) { setMemories([]); return; }
-
-    const fetchMemories = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('memories')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) { console.error('Failed to fetch:', error.message); return; }
-        setMemories(data ?? []);
-      } finally { setLoading(false); }
-    };
-
-    fetchMemories();
-  }, [walletAddress]);
-
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('memories').delete().eq('id', id);
-    if (error) { console.error('Delete failed:', error.message); return; }
-    setMemories(prev => prev.filter(m => m.id !== id));
-  };
-
-  // Derived data
   const agents = useMemo(() => {
-    const set = new Set(memories.map(m => m.agent_id));
-    return Array.from(set).sort();
+    return Array.from(new Set(memories.map(m => m.agent_id))).sort();
   }, [memories]);
 
   const filtered = useMemo(() => {
     let result = memories;
+
     if (agentFilter !== 'all') {
       result = result.filter(m => m.agent_id === agentFilter);
     }
+
+    if (typeFilter === 'treasury') {
+      result = result.filter(m => TREASURY_TYPES.includes(m.memory_type || ''));
+    } else if (typeFilter !== 'all') {
+      result = result.filter(m => m.memory_type === typeFilter);
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(m =>
         (m.memory_preview?.toLowerCase().includes(q)) ||
         m.agent_id.toLowerCase().includes(q) ||
         m.context.toLowerCase().includes(q) ||
-        (m.memory_type?.toLowerCase().includes(q))
+        (m.memory_type?.toLowerCase().includes(q)) ||
+        (m.counterparty?.toLowerCase().includes(q)) ||
+        (m.currency?.toLowerCase().includes(q))
       );
     }
+
     return result;
-  }, [memories, agentFilter, searchQuery]);
+  }, [memories, agentFilter, typeFilter, searchQuery]);
 
   if (!walletAddress) {
     return (
@@ -103,7 +93,6 @@ await mem.write('my-agent', 'Hello world', 'test');`}
 
   return (
     <Box>
-      {/* Stats */}
       <StatsBar memories={memories} />
 
       {/* Filters */}
@@ -113,7 +102,7 @@ await mem.write('my-agent', 'Hello world', 'test');`}
             size="2"
             placeholder="Search memories..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </Box>
         <Select.Root value={agentFilter} onValueChange={setAgentFilter}>
@@ -125,10 +114,25 @@ await mem.write('my-agent', 'Hello world', 'test');`}
             ))}
           </Select.Content>
         </Select.Root>
+        <Select.Root value={typeFilter} onValueChange={setTypeFilter}>
+          <Select.Trigger placeholder="All types" variant="surface" />
+          <Select.Content>
+            <Select.Item value="all">All types</Select.Item>
+            <Select.Item value="treasury">Treasury</Select.Item>
+            <Select.Separator />
+            <Select.Item value="fact">Fact</Select.Item>
+            <Select.Item value="decision">Decision</Select.Item>
+            <Select.Item value="preference">Preference</Select.Item>
+            <Select.Item value="observation">Observation</Select.Item>
+            <Select.Separator />
+            <Select.Item value="transaction_record">Transaction</Select.Item>
+            <Select.Item value="balance_snapshot">Balance</Select.Item>
+            <Select.Item value="spending_policy">Spending Policy</Select.Item>
+          </Select.Content>
+        </Select.Root>
         <Text size="1" color="gray">{filtered.length} of {memories.length}</Text>
       </Flex>
 
-      {/* Table */}
       <Table.Root size="2" variant="surface">
         <Table.Header>
           <Table.Row>
@@ -144,7 +148,7 @@ await mem.write('my-agent', 'Hello world', 'test');`}
         </Table.Header>
         <Table.Body>
           {filtered.map(row => (
-            <MemoryRow key={row.id} row={row} onDelete={handleDelete} />
+            <MemoryRow key={row.id} row={row} onDelete={onDelete} />
           ))}
         </Table.Body>
       </Table.Root>

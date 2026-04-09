@@ -73,6 +73,37 @@ for (const m of memories) {
 }
 ```
 
+## Agent Treasury
+
+ShelMem includes treasury memory types designed for the emerging AI agent payments use case. Agents can record transactions, balance snapshots, and spending policies as tamper-proof, verifiable memories on Shelby Protocol testnet.
+
+```typescript
+// Record a transaction
+await mem.recordTransaction({
+  agentId: 'trading-agent',
+  memory: 'Paid 100 APT to merchant for API access',
+  context: 'payments',
+  amount: 100,
+  currency: 'APT',
+  counterparty: '0xmerchant...',
+});
+
+// Record a balance snapshot
+await mem.recordBalanceSnapshot({
+  agentId: 'trading-agent',
+  memory: 'End-of-day balance',
+  context: 'treasury',
+  amount: 4500.75,
+  currency: 'APT',
+});
+
+// Get latest balance
+const balance = await mem.getLatestBalance('trading-agent');
+// → { amount: 4500.75, currency: 'APT', memory_type: 'balance_snapshot', ... }
+```
+
+Treasury memory types: `transaction_record`, `balance_snapshot`, `spending_policy`. Treasury records are stored with 365-day Shelby expiry (vs 30 days for standard memories).
+
 ## Environment Variables
 
 ```bash

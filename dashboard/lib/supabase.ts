@@ -32,6 +32,12 @@ export interface MemoryRow {
   memory_type: string | null;
   verified: boolean | null;
   metadata: Record<string, unknown>;
+  amount: number | null;
+  currency: string | null;
+  counterparty: string | null;
+  tx_status: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export const TREASURY_TYPES = ['transaction_record', 'balance_snapshot', 'spending_policy'];

@@ -13,7 +13,7 @@ export default function WalletProvider({ children }: { children: ReactNode }) {
         aptosConnectDappId: undefined,
       }}
       optInWallets={['Petra']}
-      onError={(error) => {
+      onError={(error: any) => {
         const msg = error?.message || error?.toString?.() || '';
         if (msg.includes('Failed to fetch') || msg.includes('CORS')) return;
         if (msg.includes('rejected') || msg.includes('User rejected')) return;

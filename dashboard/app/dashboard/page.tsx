@@ -1,15 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Box, Flex, Text, Heading } from '@radix-ui/themes';
+import { Box, Flex, Text } from '@radix-ui/themes';
+import { supabase } from '@/lib/supabase';
+import type { MemoryRow } from '@/lib/supabase';
 import WalletProvider from '@/components/WalletProvider';
 import TestnetBanner from '@/components/TestnetBanner';
 import WalletConnect from '@/components/WalletConnect';
+import TreasuryPanel from '@/components/TreasuryPanel';
 import MemoryTable from '@/components/MemoryTable';
 
 export default function DashboardPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [memories, setMemories] = useState<MemoryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!walletAddress) {
+      setMemories([]);
+      return;
+    }
+
+    const fetchMemories = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('memories')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Failed to fetch memories:', error.message);
+          return;
+        }
+        setMemories(data ?? []);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMemories();
+  }, [walletAddress]);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('memories').delete().eq('id', id);
+    if (error) {
+      console.error('Delete failed:', error.message);
+      return;
+    }
+    setMemories(prev => prev.filter(m => m.id !== id));
+  };
 
   return (
     <WalletProvider>
@@ -39,7 +80,15 @@ export default function DashboardPage() {
       </Flex>
 
       <Box style={{ flex: 1, padding: '24px 32px' }}>
-        <MemoryTable walletAddress={walletAddress} />
+        {walletAddress && !loading && memories.length > 0 && (
+          <TreasuryPanel memories={memories} />
+        )}
+        <MemoryTable
+          memories={memories}
+          loading={loading}
+          walletAddress={walletAddress}
+          onDelete={handleDelete}
+        />
       </Box>
 
       <Box style={{ padding: '24px 32px', textAlign: 'center', borderTop: '1px solid var(--gray-4)' }}>

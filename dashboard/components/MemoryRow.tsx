@@ -13,11 +13,20 @@ function explorerUrl(shelbyObjectId: string): string {
   return `https://explorer.shelby.xyz/blob/${encodeURIComponent(shelbyObjectId)}`;
 }
 
-const typeColors: Record<string, 'blue' | 'amber' | 'purple' | 'lime'> = {
+const typeColors: Record<string, 'blue' | 'amber' | 'purple' | 'lime' | 'orange' | 'cyan' | 'pink'> = {
   fact: 'blue',
   decision: 'amber',
   preference: 'purple',
   observation: 'lime',
+  transaction_record: 'orange',
+  balance_snapshot: 'cyan',
+  spending_policy: 'pink',
+};
+
+const txStatusColors: Record<string, 'amber' | 'green' | 'red'> = {
+  pending: 'amber',
+  confirmed: 'green',
+  failed: 'red',
 };
 
 export default function MemoryRow({
@@ -82,6 +91,27 @@ export default function MemoryRow({
               <Code size="2" variant="ghost" style={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6, marginBottom: 12 }}>
                 {row.memory_preview || '[No content available]'}
               </Code>
+              {/* Treasury fields */}
+              {(row.amount !== null || row.counterparty || row.tx_status) && (
+                <Flex gap="3" align="center" mb="3" wrap="wrap">
+                  {row.amount !== null && row.currency && (
+                    <Text size="3" weight="bold">{row.amount} {row.currency}</Text>
+                  )}
+                  {row.counterparty && (
+                    <Flex align="center" gap="1">
+                      <Text size="1" color="gray">→</Text>
+                      <Code size="1" variant="ghost">{row.counterparty}</Code>
+                      <CopyButton text={row.counterparty} />
+                    </Flex>
+                  )}
+                  {row.tx_status && (
+                    <Badge size="1" variant="soft" color={txStatusColors[row.tx_status] || 'gray'}>
+                      {row.tx_status}
+                    </Badge>
+                  )}
+                </Flex>
+              )}
+
               <Flex direction="column" gap="2">
                 <Flex align="center" gap="2">
                   <Text size="1" color="gray"><Code size="1" variant="ghost">Shelby: {row.shelby_object_id}</Code></Text>
