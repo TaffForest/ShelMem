@@ -8,6 +8,7 @@ import '../landing.css';
 const sections = [
   { id: 'quickstart', label: 'Quick Start' },
   { id: 'api', label: 'API Reference' },
+  { id: 'treasury', label: 'Agent Treasury' },
   { id: 'encryption', label: 'Encryption' },
   { id: 'search', label: 'Semantic Search' },
   { id: 'config', label: 'Configuration' },
@@ -118,9 +119,9 @@ for m in memories:
           {/* API Reference */}
           <section id="api" style={{ marginBottom: 56 }}>
             <Heading size="6" weight="bold" mb="5">API Reference</Heading>
-            <ApiMethod name="write" signature="write(agent_id, memory, context, memory_type?, metadata?)" description="Store a memory on Shelby. Content is SHA-256 hashed, optionally encrypted, and embedding stored if provider configured."
-              params={[['agent_id','string','Agent identifier'],['memory','string','Content to store'],['context','string','Category label'],['memory_type','MemoryType?',"'fact'|'decision'|'preference'|'observation'"],['metadata','object?','Key-value metadata']]}
-              returns={[['shelby_object_id','string','Shelby address'],['aptos_tx_hash','string','On-chain tx hash'],['content_hash','string','SHA-256 of plaintext'],['memory_type','string','Type stored'],['timestamp','string','ISO 8601']]}
+            <ApiMethod name="write" signature="write(agent_id, memory, context, memory_type?, metadata?, treasury?)" description="Store a memory on Shelby. Content is SHA-256 hashed, optionally encrypted, and embedding stored if provider configured. Treasury fields (amount, currency, counterparty, tx_status) can be passed for financial records."
+              params={[['agent_id','string','Agent identifier'],['memory','string','Content to store'],['context','string','Category label'],['memory_type','MemoryType?',"'fact'|'decision'|'preference'|'observation'|'transaction_record'|'balance_snapshot'|'spending_policy'"],['metadata','object?','Key-value metadata'],['treasury','TreasuryFields?','{ amount?, currency?, counterparty?, tx_status? }']]}
+              returns={[['shelby_object_id','string','Shelby address'],['aptos_tx_hash','string','On-chain tx hash'],['content_hash','string','SHA-256 of plaintext'],['memory_type','string','Type stored'],['timestamp','string','ISO 8601'],['amount','number?','Transaction amount'],['currency','string?','Currency (APT, USDT, etc)']]}
             />
             <ApiMethod name="recall" signature="recall(agent_id, context?, limit?, memory_type?)" description="Retrieve memories. Each is decrypted and verified against its stored content hash."
               params={[['agent_id','string','Agent to query'],['context','string?','Filter by context'],['limit','number?','Max results (default 10)'],['memory_type','MemoryType?','Filter by type']]}
@@ -134,7 +135,78 @@ for m in memories:
               params={[['id','string','Memory UUID']]}
               returns={[['verified','boolean','Hash matches'],['content_hash','string','Actual hash'],['expected_hash','string','Stored hash']]}
             />
-            <ApiMethod name="delete" signature="delete(id)" description="Remove a memory from Supabase." params={[['id','string','Memory UUID']]} returns={[]} />
+            <ApiMethod name="delete" signature="delete(id)" description="Remove a memory from Supabase and attempt Shelby blob deletion." params={[['id','string','Memory UUID']]} returns={[]} />
+            <ApiMethod name="recordTransaction" signature="recordTransaction(params)" description="Convenience wrapper for write(). Sets memory_type='transaction_record', defaults tx_status to 'pending'. Treasury records get 365-day Shelby expiry."
+              params={[['agentId','string','Agent identifier'],['memory','string','Description of the transaction'],['context','string','Category label'],['amount','number','Transaction amount'],['currency','string','Currency (APT, USDT, etc)'],['counterparty','string','Wallet address of payer/payee'],['txStatus','string?',"'pending' (default) | 'confirmed' | 'failed'"]]}
+              returns={[['shelby_object_id','string','Shelby address'],['content_hash','string','SHA-256 hash'],['amount','number','Amount'],['currency','string','Currency'],['tx_status','string','Status']]}
+            />
+            <ApiMethod name="recordBalanceSnapshot" signature="recordBalanceSnapshot(params)" description="Convenience wrapper for write(). Sets memory_type='balance_snapshot'. Records a point-in-time balance."
+              params={[['agentId','string','Agent identifier'],['memory','string','Balance description'],['context','string','Category label'],['amount','number','Balance amount'],['currency','string','Currency']]}
+              returns={[['shelby_object_id','string','Shelby address'],['amount','number','Balance amount'],['currency','string','Currency']]}
+            />
+            <ApiMethod name="getLatestBalance" signature="getLatestBalance(agentId)" description="Returns the most recent balance_snapshot for an agent, or null if none exist."
+              params={[['agentId','string','Agent identifier']]}
+              returns={[['memory','string','Balance description'],['amount','number','Balance amount'],['currency','string','Currency'],['timestamp','string','When recorded']]}
+            />
+          </section>
+
+          {/* Agent Treasury */}
+          <section id="treasury" style={{ marginBottom: 56 }}>
+            <Heading size="6" weight="bold" mb="4">Agent Treasury</Heading>
+            <Text size="2" color="gray" style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+              ShelMem includes treasury memory types for AI agent payments. Agents can record transactions, balance snapshots, and spending policies as tamper-proof, verifiable memories. Treasury records get 365-day Shelby expiry (vs 30 days for standard memories).
+            </Text>
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', marginBottom: 12 }}>Record a transaction</Text>
+            <Tabs
+              ts={`await mem.recordTransaction({
+  agentId: 'trading-agent',
+  memory: 'Paid 100 APT for API access',
+  context: 'payments',
+  amount: 100,
+  currency: 'APT',
+  counterparty: '0xmerchant...',
+});
+// → { memory_type: 'transaction_record', tx_status: 'pending', ... }`}
+              py={`await mem.record_transaction(RecordTransactionParams(
+    agent_id="trading-agent",
+    memory="Paid 100 APT for API access",
+    context="payments",
+    amount=100,
+    currency="APT",
+    counterparty="0xmerchant...",
+))
+# → WriteResult(memory_type='transaction_record', tx_status='pending')`}
+            />
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', margin: '24px 0 12px' }}>Record a balance snapshot</Text>
+            <Tabs
+              ts={`await mem.recordBalanceSnapshot({
+  agentId: 'trading-agent',
+  memory: 'End-of-day balance',
+  context: 'treasury',
+  amount: 4725,
+  currency: 'APT',
+});`}
+              py={`await mem.record_balance_snapshot(RecordBalanceParams(
+    agent_id="trading-agent",
+    memory="End-of-day balance",
+    context="treasury",
+    amount=4725,
+    currency="APT",
+))`}
+            />
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', margin: '24px 0 12px' }}>Get latest balance</Text>
+            <Tabs
+              ts={`const balance = await mem.getLatestBalance('trading-agent');
+// → { amount: 4725, currency: 'APT', memory_type: 'balance_snapshot' }
+// → null if no balance snapshots exist`}
+              py={`balance = await mem.get_latest_balance("trading-agent")
+# → MemoryRecord(amount=4725, currency="APT") or None`}
+            />
+            <Card size="1" variant="surface" mt="3">
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Memory types:</strong> <Code size="1" variant="ghost">transaction_record</Code> · <Code size="1" variant="ghost">balance_snapshot</Code> · <Code size="1" variant="ghost">spending_policy</Code></Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>tx_status values:</strong> <Code size="1" variant="ghost">pending</Code> · <Code size="1" variant="ghost">confirmed</Code> · <Code size="1" variant="ghost">failed</Code></Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Shelby expiry:</strong> 365 days (vs 30 days for standard memories)</Text>
+            </Card>
           </section>
 
           {/* Encryption */}
@@ -265,6 +337,8 @@ CREATE TABLE IF NOT EXISTS memories (
   aptos_tx_hash TEXT, content_hash CHAR(64),
   memory_type TEXT DEFAULT 'observation',
   verified BOOLEAN, embedding vector(1536),
+  amount NUMERIC, currency TEXT,
+  counterparty TEXT, tx_status TEXT,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
