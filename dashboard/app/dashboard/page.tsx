@@ -76,7 +76,12 @@ export default function DashboardPage() {
           </Link>
           <Text size="1" color="gray" style={{ display: 'block', marginTop: 2 }}>Agent Memory Dashboard</Text>
         </Box>
-        <WalletConnect onConnect={setWalletAddress} />
+        <Flex align="center" gap="3">
+          <Link href="/dashboard/treasury">
+            <Text size="2" color="gray" style={{ cursor: 'pointer' }}>Treasury →</Text>
+          </Link>
+          <WalletConnect onConnect={setWalletAddress} />
+        </Flex>
       </Flex>
 
       <Box style={{ flex: 1, padding: '24px 32px' }}>
