@@ -23,6 +23,7 @@ export default function Landing() {
             <a href="#treasury">Treasury</a>
             <a href="#code">How it works</a>
             <Link href="/docs">Docs</Link>
+            <Link href="/demo">Try Demo</Link>
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer">Shelby</a>
             <a href="https://forestinfra.com" target="_blank" rel="noopener noreferrer">Forest</a>
             <Link href="/dashboard" className="btn-hero btn-hero-primary" style={{ padding: '8px 20px', fontSize: 14 }}>Dashboard</Link>
