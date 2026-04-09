@@ -20,6 +20,7 @@ export default function Landing() {
           <Link href="/" className="nav-brand">Shel<span className="accent">Mem</span></Link>
           <div className="nav-links">
             <a href="#features">Features</a>
+            <a href="#treasury">Treasury</a>
             <a href="#code">How it works</a>
             <Link href="/docs">Docs</Link>
             <a href="https://shelby.xyz" target="_blank" rel="noopener noreferrer">Shelby</a>
@@ -39,11 +40,11 @@ export default function Landing() {
 
         <motion.div className="hero-content" initial="hidden" animate="visible" variants={stagger}>
           <motion.h1 className="hero-title" variants={fadeUp} custom={0}>
-            Tamper-proof<br />memory for<br /><span>autonomous agents</span>
+            The memory layer<br />for <span>AI agent payments</span>
           </motion.h1>
           <motion.p className="hero-subtitle" variants={fadeUp} custom={1}>
-            Encrypted, verifiable, decentralised. Every memory is SHA-256 hashed,
-            stored on Shelby Protocol, and anchored on Aptos.
+            Tamper-proof, encrypted agent memory with built-in treasury.<br />
+            Record transactions, verify balances, prove what your agent knew.
           </motion.p>
           <motion.div className="hero-install-row" variants={fadeUp} custom={2}>
             <code className="install-pill">npm install @forestinfra/shelmem</code>
@@ -56,7 +57,7 @@ export default function Landing() {
           <motion.div className="hero-badges" variants={fadeUp} custom={4}>
             <span className="hero-badge">Tamper-Proof</span>
             <span className="hero-badge">AES-256 Encrypted</span>
-            <span className="hero-badge">Semantic Search</span>
+            <span className="hero-badge">Agent Treasury</span>
             <span className="hero-badge">On-chain Proof</span>
             <span className="hero-badge hero-badge-live">Testnet Live</span>
           </motion.div>
@@ -93,24 +94,67 @@ export default function Landing() {
             <motion.h2 className="features-title" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
               Why ShelMem?
             </motion.h2>
-            <p className="features-sub">The memory layer that proves memories are real.</p>
+            <p className="features-sub">Verifiable memory for agents that handle money.</p>
           </div>
           <motion.div className="features-grid" initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-100px' }} variants={stagger}>
             {[
-              { title: 'Tamper-proof verification', desc: 'SHA-256 content hash on every write. On recall, content is re-downloaded and the hash verified. Tampered memories are flagged instantly.' },
+              { title: 'Tamper-proof verification', desc: 'SHA-256 content hash on every write. On recall, content is re-verified against the hash. Tampered memories are flagged instantly — critical for financial records.' },
+              { title: 'Agent treasury', desc: 'Record transactions, balance snapshots, and spending policies. Built-in methods for the AI agent payments use case with 365-day retention.' },
               { title: 'AES-256-GCM encryption', desc: 'End-to-end encryption. Memories are encrypted before upload to Shelby. Key derived from your Aptos private key — zero additional secrets.' },
-              { title: 'Semantic search', desc: 'pgvector embeddings stored alongside memories. Search by meaning — not just exact keyword matching.' },
-              { title: 'On-chain anchoring', desc: 'Every memory write submits an Aptos transaction. Cryptographic proof that the memory existed at that exact moment.' },
-              { title: 'Typed memory schemas', desc: 'Categorise memories as facts, decisions, preferences, or observations. Filter on recall by type.' },
-              { title: 'Decentralised storage', desc: "Content lives on Shelby Protocol's distributed hot storage. No single point of failure." },
-              { title: 'Framework adapters', desc: 'Drop-in integrations for LangChain, CrewAI, Vercel AI SDK, and Coinbase AgentKit.' },
-              { title: 'TypeScript & Python', desc: 'Published on npm and PyPI. Same API, same verification, same encryption.' },
+              { title: 'On-chain anchoring', desc: 'Every memory write submits an Aptos transaction. Cryptographic proof that a transaction record or balance existed at that exact moment.' },
+              { title: 'Semantic search', desc: 'pgvector embeddings stored alongside memories. Search by meaning — find related transactions or decisions without exact keyword matching.' },
+              { title: 'Decentralised storage', desc: "Content lives on Shelby Protocol's distributed hot storage. No single point of failure, no central database to compromise." },
+              { title: 'Framework adapters', desc: 'Drop-in integrations for LangChain, CrewAI, Vercel AI SDK, and Coinbase AgentKit. Works with your existing agent stack.' },
+              { title: 'TypeScript & Python', desc: 'Published on npm and PyPI. Same API, same verification, same encryption — both ecosystems, first-class support.' },
             ].map((f, i) => (
               <motion.div key={i} className="feature-card" variants={fadeUp} custom={i}>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
               </motion.div>
             ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Treasury */}
+      <section className="code-section" id="treasury">
+        <div className="code-inner">
+          <div className="code-header">
+            <motion.h2 className="features-title" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+              Built for agent payments.
+            </motion.h2>
+            <p className="features-sub">Record transactions, track balances, prove everything on-chain.</p>
+          </div>
+          <motion.div className="code-block" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <div className="code-block-header">
+              <span className="code-block-dot" style={{ background: '#ff5f57' }} />
+              <span className="code-block-dot" style={{ background: '#febc2e' }} />
+              <span className="code-block-dot" style={{ background: '#28c840' }} />
+              <span className="code-block-title">agent treasury</span>
+            </div>
+            <pre className="code-block-body">{`// Record a payment — tamper-proof, encrypted, on-chain proof
+await mem.recordTransaction({
+  agentId: 'trading-agent',
+  memory: 'Paid 100 APT for compute credits',
+  context: 'payments',
+  amount: 100,
+  currency: 'APT',
+  counterparty: '0xvendor...',
+});
+// → { tx_status: 'pending', content_hash: '...', aptos_tx_hash: '...' }
+
+// Snapshot the balance — verifiable point-in-time record
+await mem.recordBalanceSnapshot({
+  agentId: 'trading-agent',
+  memory: 'End-of-day balance',
+  context: 'treasury',
+  amount: 4725,
+  currency: 'APT',
+});
+
+// Check the latest balance
+const balance = await mem.getLatestBalance('trading-agent');
+// → { amount: 4725, currency: 'APT', verified: true }`}</pre>
           </motion.div>
         </div>
       </section>
@@ -179,7 +223,7 @@ const results = await mem.search('what do I know about ETH?');
       {/* CTA */}
       <section className="cta-section">
         <h2 className="cta-title">Give your agents memory.</h2>
-        <p className="cta-sub">Install the SDK and write your first verified memory in under a minute.</p>
+        <p className="cta-sub">Install the SDK, record your first transaction, and verify it — in under a minute.</p>
         <div className="cta-actions">
           <Link href="/docs" className="btn-cta btn-cta-dark">Read the Docs</Link>
           <a href="https://github.com/TaffForest/ShelMem" target="_blank" rel="noopener noreferrer" className="btn-cta btn-cta-outline">GitHub</a>
