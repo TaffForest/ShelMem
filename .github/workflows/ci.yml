@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sdk-ts:
+    name: TypeScript SDK (test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install workspace deps
+        # --force is needed because @radix-ui/themes / wallet-adapter pin
+        # react ^18 || ^19; the root "overrides" pins everything to react 19.
+        run: npm install --force
+
+      - name: Build sdk-ts
+        run: npm run build:sdk
+
+      - name: Test sdk-ts
+        run: npm test --workspace=sdk-ts
+
+  sdk-py:
+    name: Python SDK (test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        working-directory: sdk-py
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Test sdk-py
+        working-directory: sdk-py
+        run: python -m pytest -v
+
+  dashboard:
+    name: Dashboard (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install workspace deps
+        run: npm install --force
+
+      - name: Build dashboard
+        run: npm run build
+        env:
+          # Build-time env so prerender doesn't blow up. Real values used at runtime.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder

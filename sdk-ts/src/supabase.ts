@@ -198,6 +198,18 @@ export class MemoryMetadata {
     if (error) throw new Error(`Pool delete failed: ${error.message}`);
   }
 
+  async updatePoolOwner(poolId: string, newOwnerAgentId: string): Promise<Pool> {
+    const { data, error } = await this.client
+      .from('memory_pools')
+      .update({ owner_agent_id: newOwnerAgentId })
+      .eq('id', poolId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Pool owner update failed: ${error.message}`);
+    return data as Pool;
+  }
+
   async listPoolsForAgent(agentId: string): Promise<Pool[]> {
     const { data, error } = await this.client
       .from('pool_members')

@@ -70,6 +70,7 @@ class CreatePoolParams:
     owner_agent_id: str
     description: Optional[str] = None
     metadata: Optional[dict] = None
+    claim: Optional["AgentClaim"] = None
 
 
 @dataclass
@@ -84,6 +85,7 @@ class WriteToPoolParams:
     currency: Optional[str] = None
     counterparty: Optional[str] = None
     tx_status: Optional[str] = None
+    claim: Optional["AgentClaim"] = None
 
 
 @dataclass
@@ -93,6 +95,7 @@ class RecallFromPoolParams:
     context: Optional[str] = None
     limit: int = 10
     memory_type: Optional[str] = None
+    claim: Optional["AgentClaim"] = None
 
 
 @dataclass
@@ -102,6 +105,7 @@ class SearchPoolParams:
     query: str
     limit: int = 10
     threshold: float = 0.5
+    claim: Optional["AgentClaim"] = None
 
 
 AuditAction = Literal["write", "read"]
