@@ -52,7 +52,14 @@ export default function MemoryRow({
   return (
     <>
       <Table.Row onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer' }}>
-        <Table.Cell><Code size="2" variant="ghost" color="lime">{row.agent_id}</Code></Table.Cell>
+        <Table.Cell>
+          <Flex align="center" gap="2">
+            <Code size="2" variant="ghost" color="lime">{row.agent_id}</Code>
+            {row.pool_id && (
+              <Badge size="1" variant="soft" color="iris" title={`Pool ${row.pool_id}`}>POOL</Badge>
+            )}
+          </Flex>
+        </Table.Cell>
         <Table.Cell><Badge size="1" variant="soft" color={badgeColor}>{memType}</Badge></Table.Cell>
         <Table.Cell><Text size="2" color="gray">{row.context}</Text></Table.Cell>
         <Table.Cell style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -113,6 +120,12 @@ export default function MemoryRow({
               )}
 
               <Flex direction="column" gap="2">
+                {row.pool_id && (
+                  <Flex align="center" gap="2">
+                    <Text size="1" color="gray"><Code size="1" variant="ghost">Pool: {row.pool_id}</Code></Text>
+                    <CopyButton text={row.pool_id} />
+                  </Flex>
+                )}
                 <Flex align="center" gap="2">
                   <Text size="1" color="gray"><Code size="1" variant="ghost">Shelby: {row.shelby_object_id}</Code></Text>
                   <CopyButton text={row.shelby_object_id} />

@@ -1,14 +1,21 @@
 import { ShelbyStorage, computeHash } from './shelby.js';
 import { MemoryMetadata } from './supabase.js';
+import { PermissionError } from './errors.js';
 import type {
   ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult,
   SearchResult, TreasuryFields, RecordTransactionParams, RecordBalanceParams,
+  Pool, PoolMember, PoolRole, CreatePoolParams, WriteToPoolParams, RecallFromPoolParams,
+  SearchPoolParams, PoolAuditEntry,
 } from './types.js';
 
 export type {
   ShelMemConfig, WriteResult, MemoryRecord, MemoryRow, MemoryType, VerifyResult,
   SearchResult, TreasuryFields, TreasuryMemoryType, RecordTransactionParams, RecordBalanceParams,
+  Pool, PoolMember, PoolRole, CreatePoolParams, WriteToPoolParams, RecallFromPoolParams,
+  SearchPoolParams, PoolAuditEntry, AuditAction, AgentClaim,
 } from './types.js';
+export { PermissionError } from './errors.js';
+export { signAgentClaim, verifyAgentClaim, AgentClaimError } from './agent-identity.js';
 export { computeHash } from './shelby.js';
 export { openaiEmbeddings } from './embeddings.js';
 export type { EmbeddingProvider } from './embeddings.js';
@@ -44,7 +51,8 @@ export class ShelMem {
     context: string,
     memory_type: MemoryType = 'observation',
     metadata?: Record<string, unknown>,
-    treasury?: TreasuryFields
+    treasury?: TreasuryFields,
+    sharedWith?: string[]
   ): Promise<WriteResult> {
     const encoder = new TextEncoder();
     const bytes = encoder.encode(memory);
@@ -70,6 +78,7 @@ export class ShelMem {
       metadata,
       embedding,
       treasury,
+      shared_with: sharedWith,
     });
 
     return {
@@ -237,5 +246,285 @@ export class ShelMem {
   async getLatestBalance(agentId: string): Promise<MemoryRecord | null> {
     const results = await this.recall(agentId, undefined, 1, 'balance_snapshot');
     return results.length > 0 ? results[0] : null;
+  }
+
+  // --- Shared memory pools ---
+
+  private async assertRole(
+    poolId: string,
+    agentId: string,
+    allowed: PoolRole[]
+  ): Promise<PoolMember> {
+    const member = await this.metadata.getMember(poolId, agentId);
+    if (!member) {
+      throw new PermissionError(
+        `Agent '${agentId}' is not a member of pool '${poolId}'`
+      );
+    }
+    if (!allowed.includes(member.role)) {
+      throw new PermissionError(
+        `Agent '${agentId}' has role '${member.role}'; required one of [${allowed.join(', ')}]`
+      );
+    }
+    return member;
+  }
+
+  /** Create a pool. The owner is automatically added as a member with role='owner'. */
+  async createPool(params: CreatePoolParams): Promise<Pool> {
+    if (!params.name?.trim()) throw new Error('pool name cannot be empty');
+    if (!params.ownerAgentId?.trim()) throw new Error('ownerAgentId cannot be empty');
+    return this.metadata.insertPool(params);
+  }
+
+  /** Get pool metadata. Caller must be a pool member. */
+  async getPool(poolId: string, callerAgentId: string): Promise<Pool> {
+    await this.assertRole(poolId, callerAgentId, ['owner', 'writer', 'reader']);
+    const pool = await this.metadata.getPool(poolId);
+    if (!pool) throw new Error(`Pool not found: ${poolId}`);
+    return pool;
+  }
+
+  /** List pools the agent is a member of. */
+  async listPools(agentId: string): Promise<Pool[]> {
+    return this.metadata.listPoolsForAgent(agentId);
+  }
+
+  /** Delete a pool. Owner only. Cascades pool_members; memories' pool_id is set to NULL. */
+  async deletePool(poolId: string, callerAgentId: string): Promise<void> {
+    await this.assertRole(poolId, callerAgentId, ['owner']);
+    await this.metadata.deletePool(poolId);
+  }
+
+  /** Add or update a member's role in a pool. Owner only. */
+  async addPoolMember(
+    poolId: string,
+    callerAgentId: string,
+    targetAgentId: string,
+    role: PoolRole
+  ): Promise<PoolMember> {
+    await this.assertRole(poolId, callerAgentId, ['owner']);
+    if (!targetAgentId?.trim()) throw new Error('targetAgentId cannot be empty');
+    return this.metadata.upsertMember(poolId, targetAgentId, role);
+  }
+
+  /** Remove a member from a pool. Owner only. The owner cannot remove themselves. */
+  async removePoolMember(
+    poolId: string,
+    callerAgentId: string,
+    targetAgentId: string
+  ): Promise<void> {
+    await this.assertRole(poolId, callerAgentId, ['owner']);
+    const target = await this.metadata.getMember(poolId, targetAgentId);
+    if (target?.role === 'owner') {
+      throw new PermissionError('Cannot remove the pool owner');
+    }
+    await this.metadata.removeMember(poolId, targetAgentId);
+  }
+
+  /** List all members of a pool. Caller must be a pool member. */
+  async listPoolMembers(poolId: string, callerAgentId: string): Promise<PoolMember[]> {
+    await this.assertRole(poolId, callerAgentId, ['owner', 'writer', 'reader']);
+    return this.metadata.listMembers(poolId);
+  }
+
+  /** Write a memory into a shared pool. Caller must be owner or writer. */
+  async writeToPool(params: WriteToPoolParams): Promise<WriteResult> {
+    await this.assertRole(params.poolId, params.agentId, ['owner', 'writer']);
+
+    const memory_type: MemoryType = params.memory_type ?? 'observation';
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(params.memory);
+
+    const blobName = `${params.agentId}_${Date.now()}`;
+    const { shelbyAddress, shelbyProof, contentHash } =
+      await this.storage.upload(bytes, blobName, memory_type);
+
+    let embedding: number[] | undefined;
+    if (this.embed) {
+      embedding = await this.embed(params.memory);
+    }
+
+    const preview = params.memory.slice(0, 200);
+
+    const row = await this.metadata.insert({
+      agent_id: params.agentId,
+      context: params.context,
+      memory_preview: preview,
+      shelby_object_id: shelbyAddress,
+      aptos_tx_hash: shelbyProof,
+      content_hash: contentHash,
+      memory_type,
+      metadata: params.metadata,
+      embedding,
+      treasury: params.treasury,
+      pool_id: params.poolId,
+    });
+
+    // Audit log — best-effort; never fail the write if logging fails.
+    this.metadata.logPoolAccess({
+      pool_id: params.poolId,
+      agent_id: params.agentId,
+      action: 'write',
+      memory_id: row.id,
+    }).catch(() => {});
+
+    return {
+      shelby_object_id: shelbyAddress,
+      aptos_tx_hash: shelbyProof,
+      content_hash: contentHash,
+      memory_type,
+      timestamp: row.created_at,
+      amount: row.amount,
+      currency: row.currency,
+      counterparty: row.counterparty,
+      tx_status: row.tx_status,
+    };
+  }
+
+  /** Recall memories from a shared pool. Caller must be a pool member. */
+  async recallFromPool(params: RecallFromPoolParams): Promise<MemoryRecord[]> {
+    await this.assertRole(params.poolId, params.agentId, ['owner', 'writer', 'reader']);
+
+    const rows = await this.metadata.queryPool(
+      params.poolId,
+      params.context,
+      params.memory_type,
+      params.limit ?? 10
+    );
+    const decoder = new TextDecoder();
+
+    const records = await Promise.all(rows.map(async (row): Promise<MemoryRecord> => {
+      let memoryText: string;
+      let verified: boolean | null = null;
+
+      try {
+        const bytes = await this.storage.download(row.shelby_object_id);
+        memoryText = decoder.decode(bytes);
+
+        if (row.content_hash) {
+          const actualHash = computeHash(bytes);
+          verified = actualHash === row.content_hash;
+        }
+      } catch {
+        memoryText = row.memory_preview ?? '[content unavailable]';
+        verified = null;
+      }
+
+      if (verified !== null && verified !== row.verified) {
+        this.metadata.updateVerified(row.id, verified).catch(() => {});
+      }
+
+      return {
+        memory: memoryText,
+        context: row.context,
+        timestamp: row.created_at,
+        aptos_tx_hash: row.aptos_tx_hash ?? '',
+        content_hash: row.content_hash ?? '',
+        memory_type: (row.memory_type as MemoryType) ?? 'observation',
+        verified,
+        agent_id: row.agent_id,
+        pool_id: row.pool_id,
+        shared_with: row.shared_with ?? [],
+        amount: row.amount,
+        currency: row.currency,
+        counterparty: row.counterparty,
+        tx_status: row.tx_status,
+      };
+    }));
+
+    this.metadata.logPoolAccess({
+      pool_id: params.poolId,
+      agent_id: params.agentId,
+      action: 'read',
+      result_count: records.length,
+    }).catch(() => {});
+
+    return records;
+  }
+
+  /**
+   * Recall memories that have been explicitly shared with this agent
+   * via the shared_with ACL (regardless of pool membership).
+   */
+  async recallShared(
+    agent_id: string,
+    context?: string,
+    limit: number = 10,
+    memory_type?: MemoryType
+  ): Promise<MemoryRecord[]> {
+    const rows = await this.metadata.querySharedWith(agent_id, context, memory_type, limit);
+    const decoder = new TextDecoder();
+
+    return Promise.all(rows.map(async (row): Promise<MemoryRecord> => {
+      let memoryText: string;
+      let verified: boolean | null = null;
+
+      try {
+        const bytes = await this.storage.download(row.shelby_object_id);
+        memoryText = decoder.decode(bytes);
+        if (row.content_hash) {
+          verified = computeHash(bytes) === row.content_hash;
+        }
+      } catch {
+        memoryText = row.memory_preview ?? '[content unavailable]';
+        verified = null;
+      }
+
+      return {
+        memory: memoryText,
+        context: row.context,
+        timestamp: row.created_at,
+        aptos_tx_hash: row.aptos_tx_hash ?? '',
+        content_hash: row.content_hash ?? '',
+        memory_type: (row.memory_type as MemoryType) ?? 'observation',
+        verified,
+        agent_id: row.agent_id,
+        pool_id: row.pool_id,
+        shared_with: row.shared_with ?? [],
+        amount: row.amount,
+        currency: row.currency,
+        counterparty: row.counterparty,
+        tx_status: row.tx_status,
+      };
+    }));
+  }
+
+  /** Semantic search inside a shared pool. Caller must be a pool member. */
+  async searchPool(params: SearchPoolParams): Promise<SearchResult[]> {
+    if (!this.embed) {
+      throw new Error('Semantic search requires an embeddingProvider in config');
+    }
+    await this.assertRole(params.poolId, params.agentId, ['owner', 'writer', 'reader']);
+
+    const queryEmbedding = await this.embed(params.query);
+    const results = await this.metadata.searchPool(
+      queryEmbedding,
+      params.poolId,
+      params.threshold ?? 0.5,
+      params.limit ?? 10
+    );
+
+    this.metadata.logPoolAccess({
+      pool_id: params.poolId,
+      agent_id: params.agentId,
+      action: 'read',
+      result_count: results.length,
+      metadata: { search_query: params.query },
+    }).catch(() => {});
+
+    return results;
+  }
+
+  /**
+   * Read the audit log for a pool. Owner only.
+   * Returns one row per write/read action, newest first.
+   */
+  async getPoolAuditLog(
+    poolId: string,
+    callerAgentId: string,
+    limit: number = 100
+  ): Promise<PoolAuditEntry[]> {
+    await this.assertRole(poolId, callerAgentId, ['owner']);
+    return this.metadata.queryPoolAuditLog(poolId, limit);
   }
 }

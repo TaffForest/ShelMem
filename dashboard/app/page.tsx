@@ -21,6 +21,7 @@ export default function Landing() {
           <div className="nav-links">
             <a href="#features">Features</a>
             <a href="#treasury">Treasury</a>
+            <a href="#pools">Pools</a>
             <a href="#code">How it works</a>
             <Link href="/docs">Docs</Link>
             <Link href="/demo">Try Demo</Link>
@@ -59,6 +60,7 @@ export default function Landing() {
             <span className="hero-badge">Tamper-Proof</span>
             <span className="hero-badge">AES-256 Encrypted</span>
             <span className="hero-badge">Agent Treasury</span>
+            <span className="hero-badge">Shared Pools</span>
             <span className="hero-badge">On-chain Proof</span>
             <span className="hero-badge hero-badge-live">Testnet Live</span>
           </motion.div>
@@ -101,6 +103,10 @@ export default function Landing() {
             {[
               { title: 'Tamper-proof verification', desc: 'SHA-256 content hash on every write. On recall, content is re-verified against the hash. Tampered memories are flagged instantly — critical for financial records.' },
               { title: 'Agent treasury', desc: 'Record transactions, balance snapshots, and spending policies. Built-in methods for the AI agent payments use case with 365-day retention.' },
+              { title: 'Shared multi-agent memory', desc: 'Pools let agents share a memory workspace with owner / writer / reader roles. Trading writes, execution reads, risk validates, reporting archives — all through one source of truth.' },
+              { title: 'Per-memory ACLs', desc: 'sharedWith on every write — grant individual agents read access without putting the memory in a pool. Pools and ACLs compose for fine-grained control.' },
+              { title: 'Pool audit log', desc: 'Every read and write into a shared pool is logged. Pool owners can replay who-read-what-and-when. Best-effort, never blocks the underlying call.' },
+              { title: 'Cryptographic agent identity', desc: 'Ed25519 sign / verify primitives so agents can prove they own an agent_id without a service-role key. Same Aptos key already used for on-chain anchoring.' },
               { title: 'AES-256-GCM encryption', desc: 'End-to-end encryption. Memories are encrypted before upload to Shelby. Key derived from your Aptos private key — zero additional secrets.' },
               { title: 'On-chain anchoring', desc: 'Every memory write submits an Aptos transaction. Cryptographic proof that a transaction record or balance existed at that exact moment.' },
               { title: 'Semantic search', desc: 'pgvector embeddings stored alongside memories. Search by meaning — find related transactions or decisions without exact keyword matching.' },
@@ -156,6 +162,53 @@ await mem.recordBalanceSnapshot({
 // Check the latest balance
 const balance = await mem.getLatestBalance('trading-agent');
 // → { amount: 4725, currency: 'APT', verified: true }`}</pre>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Shared Pools */}
+      <section className="code-section" id="pools">
+        <div className="code-inner">
+          <div className="code-header">
+            <motion.h2 className="features-title" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+              The coordination layer for agents.
+            </motion.h2>
+            <p className="features-sub">Shared memory pools with role-based permissions. Trading writes, execution reads, risk validates, reporting archives.</p>
+          </div>
+          <motion.div className="code-block" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <div className="code-block-header">
+              <span className="code-block-dot" style={{ background: '#ff5f57' }} />
+              <span className="code-block-dot" style={{ background: '#febc2e' }} />
+              <span className="code-block-dot" style={{ background: '#28c840' }} />
+              <span className="code-block-title">shared multi-agent memory</span>
+            </div>
+            <pre className="code-block-body">{`// Owner creates a pool and invites collaborators with roles
+const pool = await mem.createPool({
+  name: 'market-ops',
+  ownerAgentId: 'trading-agent',
+});
+await mem.addPoolMember(pool.id, 'trading-agent', 'execution-agent', 'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'risk-agent',      'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'reporting-agent', 'reader');
+
+// Trading agent publishes a market decision into the pool
+await mem.writeToPool({
+  poolId: pool.id, agentId: 'trading-agent',
+  memory: 'RSI=35, buy 500 APT', context: 'trading',
+  memory_type: 'decision',
+});
+
+// Any member can read everything written into the pool
+const records = await mem.recallFromPool({
+  poolId: pool.id, agentId: 'reporting-agent',
+});
+// → [{ agent_id: 'trading-agent',   memory_type: 'decision',           ... },
+//    { agent_id: 'execution-agent', memory_type: 'transaction_record', ... },
+//    { agent_id: 'risk-agent',      memory_type: 'observation',        ... }]
+
+// Readers cannot write — enforced at the SDK boundary
+await mem.writeToPool({ poolId: pool.id, agentId: 'reporting-agent', ... });
+// → throws PermissionError: role 'reader' cannot write`}</pre>
           </motion.div>
         </div>
       </section>

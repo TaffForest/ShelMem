@@ -77,6 +77,9 @@ export default function DashboardPage() {
           <Text size="1" color="gray" style={{ display: 'block', marginTop: 2 }}>Agent Memory Dashboard</Text>
         </Box>
         <Flex align="center" gap="3">
+          <Link href="/dashboard/pools">
+            <Text size="2" color="gray" style={{ cursor: 'pointer' }}>Pools →</Text>
+          </Link>
           <Link href="/dashboard/treasury">
             <Text size="2" color="gray" style={{ cursor: 'pointer' }}>Treasury →</Text>
           </Link>

@@ -32,6 +32,7 @@ export interface MemoryRow {
   memory_type: string | null;
   verified: boolean | null;
   metadata: Record<string, unknown>;
+  pool_id: string | null;
   amount: number | null;
   currency: string | null;
   counterparty: string | null;

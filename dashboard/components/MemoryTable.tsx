@@ -32,6 +32,8 @@ export default function MemoryTable({ memories, loading, walletAddress, onDelete
 
     if (typeFilter === 'treasury') {
       result = result.filter(m => TREASURY_TYPES.includes(m.memory_type || ''));
+    } else if (typeFilter === 'pool') {
+      result = result.filter(m => m.pool_id !== null);
     } else if (typeFilter !== 'all') {
       result = result.filter(m => m.memory_type === typeFilter);
     }
@@ -119,6 +121,7 @@ await mem.write('my-agent', 'Hello world', 'test');`}
           <Select.Content>
             <Select.Item value="all">All types</Select.Item>
             <Select.Item value="treasury">Treasury</Select.Item>
+            <Select.Item value="pool">Pool memories</Select.Item>
             <Select.Separator />
             <Select.Item value="fact">Fact</Select.Item>
             <Select.Item value="decision">Decision</Select.Item>
