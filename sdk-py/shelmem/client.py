@@ -11,8 +11,9 @@ from .types import (
     WriteResult, MemoryRecord, VerifyResult, SearchResult,
     RecordTransactionParams, RecordBalanceParams,
     Pool, PoolMember, CreatePoolParams, WriteToPoolParams, RecallFromPoolParams,
-    SearchPoolParams, PoolAuditEntry,
+    SearchPoolParams, PoolAuditEntry, AgentClaim,
 )
+from .agent_identity import verify_agent_claim, AgentClaimError
 from .embeddings import EmbeddingProvider
 
 VALID_MEMORY_TYPES = (
@@ -68,11 +69,18 @@ class ShelMem:
         mock: Optional[bool] = None,
         encrypt: bool = False,
         embedding_provider: Optional[EmbeddingProvider] = None,
+        agent_registry: Optional[Dict[str, str]] = None,
+        verify_signatures: bool = False,
+        claim_max_age_seconds: int = 300,
     ):
         if not supabase_url or not supabase_url.startswith("http"):
             raise ValidationError("supabase_url must be a valid HTTP(S) URL")
         if not supabase_key:
             raise ValidationError("supabase_key is required")
+        if verify_signatures and not agent_registry:
+            raise ValidationError(
+                "verify_signatures=True requires agent_registry mapping agent_id → publicKey"
+            )
 
         self._storage = ShelbyStorage(
             api_key=shelby_api_key,
@@ -83,6 +91,25 @@ class ShelMem:
         )
         self._metadata = MemoryMetadata(supabase_url, supabase_key)
         self._embed = embedding_provider
+        self._agent_registry = agent_registry
+        self._verify_signatures = verify_signatures
+        self._claim_max_age_seconds = claim_max_age_seconds
+
+    def _assert_claim(self, agent_id: str, claim: Optional[AgentClaim]) -> None:
+        """No-op when verify_signatures is False. Otherwise validates the
+        claim against agent_registry[agent_id] and raises AgentClaimError."""
+        if not self._verify_signatures:
+            return
+        if claim is None:
+            raise AgentClaimError(
+                f"verify_signatures is enabled — agent '{agent_id}' must pass a signed claim"
+            )
+        expected = (self._agent_registry or {}).get(agent_id)
+        if not expected:
+            raise AgentClaimError(
+                f"agent '{agent_id}' has no registered public key in agent_registry"
+            )
+        verify_agent_claim(claim, agent_id, expected, self._claim_max_age_seconds)
 
     async def write(
         self,
@@ -317,6 +344,7 @@ class ShelMem:
 
     async def create_pool(self, params: CreatePoolParams) -> Pool:
         """Create a pool. Owner is auto-added as a member with role='owner'."""
+        self._assert_claim(params.owner_agent_id, params.claim)
         if not params.name or not params.name.strip():
             raise ValidationError("pool name cannot be empty")
         if not params.owner_agent_id or not params.owner_agent_id.strip():
@@ -338,8 +366,11 @@ class ShelMem:
             updated_at=row["updated_at"],
         )
 
-    async def get_pool(self, pool_id: str, caller_agent_id: str) -> Pool:
+    async def get_pool(
+        self, pool_id: str, caller_agent_id: str, claim: Optional[AgentClaim] = None,
+    ) -> Pool:
         """Get pool metadata. Caller must be a pool member."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, VALID_POOL_ROLES)
         row = self._metadata.get_pool(pool_id)
         if not row:
@@ -354,8 +385,11 @@ class ShelMem:
             updated_at=row["updated_at"],
         )
 
-    async def list_pools(self, agent_id: str) -> List[Pool]:
+    async def list_pools(
+        self, agent_id: str, claim: Optional[AgentClaim] = None,
+    ) -> List[Pool]:
         """List pools the agent is a member of."""
+        self._assert_claim(agent_id, claim)
         rows = self._metadata.list_pools_for_agent(agent_id)
         return [
             Pool(
@@ -370,10 +404,47 @@ class ShelMem:
             for r in rows
         ]
 
-    async def delete_pool(self, pool_id: str, caller_agent_id: str) -> None:
+    async def delete_pool(
+        self, pool_id: str, caller_agent_id: str, claim: Optional[AgentClaim] = None,
+    ) -> None:
         """Delete a pool. Owner only."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, ("owner",))
         self._metadata.delete_pool(pool_id)
+
+    async def transfer_pool(
+        self,
+        pool_id: str,
+        caller_agent_id: str,
+        new_owner_agent_id: str,
+        claim: Optional[AgentClaim] = None,
+    ) -> Pool:
+        """Transfer pool ownership to an existing member. Caller must be the
+        current owner. Target is promoted to 'owner'; previous owner becomes
+        'writer'."""
+        self._assert_claim(caller_agent_id, claim)
+        self._assert_role(pool_id, caller_agent_id, ("owner",))
+        if not new_owner_agent_id or not new_owner_agent_id.strip():
+            raise ValidationError("new_owner_agent_id cannot be empty")
+        if new_owner_agent_id == caller_agent_id:
+            raise ValidationError("new_owner_agent_id is already the owner")
+        target = self._metadata.get_member(pool_id, new_owner_agent_id)
+        if not target:
+            raise PermissionError(
+                f"Agent '{new_owner_agent_id}' is not a member of pool '{pool_id}'"
+            )
+        self._metadata.upsert_member(pool_id, new_owner_agent_id, "owner")
+        self._metadata.upsert_member(pool_id, caller_agent_id, "writer")
+        row = self._metadata.update_pool_owner(pool_id, new_owner_agent_id)
+        return Pool(
+            id=row["id"],
+            name=row["name"],
+            description=row.get("description"),
+            owner_agent_id=row["owner_agent_id"],
+            metadata=row.get("metadata") or {},
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
 
     async def add_pool_member(
         self,
@@ -381,8 +452,10 @@ class ShelMem:
         caller_agent_id: str,
         target_agent_id: str,
         role: str,
+        claim: Optional[AgentClaim] = None,
     ) -> PoolMember:
         """Add or update a member's role. Owner only."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, ("owner",))
         if role not in VALID_POOL_ROLES:
             raise ValidationError(f"role must be one of {list(VALID_POOL_ROLES)}")
@@ -401,8 +474,10 @@ class ShelMem:
         pool_id: str,
         caller_agent_id: str,
         target_agent_id: str,
+        claim: Optional[AgentClaim] = None,
     ) -> None:
         """Remove a member. Owner only. Cannot remove the pool owner."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, ("owner",))
         target = self._metadata.get_member(pool_id, target_agent_id)
         if target and target.get("role") == "owner":
@@ -410,9 +485,10 @@ class ShelMem:
         self._metadata.remove_member(pool_id, target_agent_id)
 
     async def list_pool_members(
-        self, pool_id: str, caller_agent_id: str
+        self, pool_id: str, caller_agent_id: str, claim: Optional[AgentClaim] = None,
     ) -> List[PoolMember]:
         """List all members. Caller must be a pool member."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, VALID_POOL_ROLES)
         rows = self._metadata.list_members(pool_id)
         return [
@@ -427,6 +503,7 @@ class ShelMem:
 
     async def write_to_pool(self, params: WriteToPoolParams) -> WriteResult:
         """Write a memory into a shared pool. Caller must be owner or writer."""
+        self._assert_claim(params.agent_id, params.claim)
         self._assert_role(params.pool_id, params.agent_id, ("owner", "writer"))
 
         if not params.memory:
@@ -499,6 +576,7 @@ class ShelMem:
         self, params: RecallFromPoolParams
     ) -> List[MemoryRecord]:
         """Recall memories from a shared pool. Caller must be a pool member."""
+        self._assert_claim(params.agent_id, params.claim)
         self._assert_role(params.pool_id, params.agent_id, VALID_POOL_ROLES)
 
         rows = self._metadata.query_pool(
@@ -562,8 +640,10 @@ class ShelMem:
         context: Optional[str] = None,
         limit: int = 10,
         memory_type: Optional[str] = None,
+        claim: Optional[AgentClaim] = None,
     ) -> List[MemoryRecord]:
         """Recall memories explicitly shared with this agent via shared_with."""
+        self._assert_claim(agent_id, claim)
         rows = self._metadata.query_shared_with(agent_id, context, memory_type, limit)
 
         async def _process_row(row: Dict) -> MemoryRecord:
@@ -601,6 +681,7 @@ class ShelMem:
         """Semantic search inside a shared pool. Caller must be a member."""
         if not self._embed:
             raise RuntimeError("Semantic search requires an embedding_provider")
+        self._assert_claim(params.agent_id, params.claim)
         self._assert_role(params.pool_id, params.agent_id, VALID_POOL_ROLES)
 
         query_embedding = await self._embed(params.query)
@@ -635,9 +716,14 @@ class ShelMem:
         ]
 
     async def get_pool_audit_log(
-        self, pool_id: str, caller_agent_id: str, limit: int = 100
+        self,
+        pool_id: str,
+        caller_agent_id: str,
+        limit: int = 100,
+        claim: Optional[AgentClaim] = None,
     ) -> List[PoolAuditEntry]:
         """Read the audit log for a pool. Owner only."""
+        self._assert_claim(caller_agent_id, claim)
         self._assert_role(pool_id, caller_agent_id, ("owner",))
         rows = self._metadata.query_pool_audit_log(pool_id, limit)
         return [

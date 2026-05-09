@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelmem"
-version = "0.2.0"
-description = "Decentralised AI agent memory SDK — powered by Shelby Protocol and Aptos"
+version = "0.3.0"
+description = "The coordination layer for multi-agent systems — shared memory pools, role-based permissions, audit logs, and a built-in treasury, powered by Shelby Protocol and Aptos"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"

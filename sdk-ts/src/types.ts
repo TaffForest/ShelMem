@@ -11,6 +11,20 @@ export interface ShelMemConfig {
   mock?: boolean;
   encrypt?: boolean;
   embeddingProvider?: (text: string) => Promise<number[]>;
+  /**
+   * Map of agent_id → expected Ed25519 public key (hex). When set together
+   * with `verifySignatures: true`, every pool method requires a signed claim
+   * from the caller and the SDK verifies it against this registry.
+   */
+  agentRegistry?: Record<string, string>;
+  /**
+   * Require a signed AgentClaim on every pool method call. Defaults to false
+   * (the existing trust-based agent_id model). When true, callers must pass
+   * `claim` to writeToPool / recallFromPool / etc., or those calls reject.
+   */
+  verifySignatures?: boolean;
+  /** Max age (seconds) of an agent claim. Default 300. */
+  claimMaxAgeSeconds?: number;
 }
 
 export interface TreasuryFields {
@@ -100,6 +114,7 @@ export interface CreatePoolParams {
   ownerAgentId: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  claim?: AgentClaim;
 }
 
 export interface WriteToPoolParams {
@@ -110,6 +125,7 @@ export interface WriteToPoolParams {
   memory_type?: MemoryType;
   metadata?: Record<string, unknown>;
   treasury?: TreasuryFields;
+  claim?: AgentClaim;
 }
 
 export interface RecallFromPoolParams {
@@ -118,6 +134,7 @@ export interface RecallFromPoolParams {
   context?: string;
   limit?: number;
   memory_type?: MemoryType;
+  claim?: AgentClaim;
 }
 
 export interface SearchPoolParams {
@@ -126,6 +143,7 @@ export interface SearchPoolParams {
   query: string;
   limit?: number;
   threshold?: number;
+  claim?: AgentClaim;
 }
 
 export type AuditAction = 'write' | 'read';

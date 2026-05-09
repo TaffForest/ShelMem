@@ -194,6 +194,44 @@ describe('Shared memory pools', () => {
     });
   });
 
+  describe('transferPool', () => {
+    beforeEach(() => {
+      store.members.set('execution-agent', {
+        pool_id: 'pool-1', agent_id: 'execution-agent', role: 'writer',
+        added_at: '2026-01-01T00:00:00Z',
+      });
+      vi.spyOn((mem as any).metadata, 'updatePoolOwner').mockImplementation(async (poolId: any, newOwner: any) => {
+        store.pool = { ...store.pool, owner_agent_id: newOwner };
+        return store.pool;
+      });
+    });
+
+    it('promotes target to owner, demotes caller to writer', async () => {
+      await mem.transferPool('pool-1', 'trading-agent', 'execution-agent');
+      expect(store.members.get('execution-agent')?.role).toBe('owner');
+      expect(store.members.get('trading-agent')?.role).toBe('writer');
+      expect(store.pool.owner_agent_id).toBe('execution-agent');
+    });
+
+    it('rejects non-owner', async () => {
+      await expect(
+        mem.transferPool('pool-1', 'execution-agent', 'trading-agent')
+      ).rejects.toBeInstanceOf(PermissionError);
+    });
+
+    it('rejects target who is not a member', async () => {
+      await expect(
+        mem.transferPool('pool-1', 'trading-agent', 'rando')
+      ).rejects.toBeInstanceOf(PermissionError);
+    });
+
+    it('rejects transfer to self', async () => {
+      await expect(
+        mem.transferPool('pool-1', 'trading-agent', 'trading-agent')
+      ).rejects.toThrow(/already the owner/);
+    });
+  });
+
   describe('removePoolMember', () => {
     it('cannot remove the pool owner', async () => {
       await expect(
@@ -475,5 +513,95 @@ describe('Agent identity (sign + verify)', () => {
       (claim.signature.endsWith('0') ? '1' : '0') };
     expect(() => verifyAgentClaim(tampered, 'trading-agent', claim.publicKey))
       .toThrow(AgentClaimError);
+  });
+});
+
+describe('verifySignatures enforcement on the SDK', () => {
+  const PRIV = '0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20';
+
+  it('throws if verifySignatures=true without agentRegistry', async () => {
+    expect(() => new ShelMem({
+      supabaseUrl: 'x', supabaseKey: 'y', mock: true,
+      verifySignatures: true,
+    } as any)).toThrow(/agentRegistry/);
+  });
+
+  it('writeToPool requires a valid claim when verifySignatures=true', async () => {
+    const { signAgentClaim, AgentClaimError } = await import('../agent-identity.js');
+    const claim = signAgentClaim('trading-agent', PRIV);
+
+    const mem = new ShelMem({
+      supabaseUrl: 'x', supabaseKey: 'y', mock: true,
+      verifySignatures: true,
+      agentRegistry: { 'trading-agent': claim.publicKey },
+    });
+    const store = makeStore();
+    attachFakeMetadata(mem, store, []);
+
+    // Without claim → rejected
+    await expect(mem.writeToPool({
+      poolId: 'pool-1', agentId: 'trading-agent',
+      memory: 'x', context: 'trading',
+    })).rejects.toBeInstanceOf(AgentClaimError);
+
+    // With valid claim → accepted
+    await mem.writeToPool({
+      poolId: 'pool-1', agentId: 'trading-agent',
+      memory: 'x', context: 'trading',
+      claim,
+    });
+    expect(store.memories.length).toBe(1);
+  });
+
+  it('rejects a claim signed by a different key (impersonation)', async () => {
+    const { signAgentClaim, AgentClaimError } = await import('../agent-identity.js');
+    const tradingClaim = signAgentClaim('trading-agent', PRIV);
+    const OTHER_PRIV = '0x' + 'aa'.repeat(32);
+    const attackerClaim = signAgentClaim('trading-agent', OTHER_PRIV);
+
+    const mem = new ShelMem({
+      supabaseUrl: 'x', supabaseKey: 'y', mock: true,
+      verifySignatures: true,
+      agentRegistry: { 'trading-agent': tradingClaim.publicKey },
+    });
+    const store = makeStore();
+    attachFakeMetadata(mem, store, []);
+
+    // Attacker has a real signature but with the wrong key
+    await expect(mem.writeToPool({
+      poolId: 'pool-1', agentId: 'trading-agent',
+      memory: 'attack', context: 'trading',
+      claim: attackerClaim,
+    })).rejects.toBeInstanceOf(AgentClaimError);
+    expect(store.memories.length).toBe(0);
+  });
+
+  it('rejects an unregistered agent_id even with a valid claim', async () => {
+    const { signAgentClaim, AgentClaimError } = await import('../agent-identity.js');
+    const claim = signAgentClaim('rogue-agent', PRIV);
+
+    const mem = new ShelMem({
+      supabaseUrl: 'x', supabaseKey: 'y', mock: true,
+      verifySignatures: true,
+      agentRegistry: { 'trading-agent': claim.publicKey },  // rogue not registered
+    });
+    attachFakeMetadata(mem, makeStore(), []);
+
+    await expect(mem.writeToPool({
+      poolId: 'pool-1', agentId: 'rogue-agent',
+      memory: 'x', context: 'trading',
+      claim,
+    })).rejects.toBeInstanceOf(AgentClaimError);
+  });
+
+  it('verifySignatures=false (default) ignores claims and lets calls through', async () => {
+    const mem = new ShelMem({ supabaseUrl: 'x', supabaseKey: 'y', mock: true });
+    const store = makeStore();
+    attachFakeMetadata(mem, store, []);
+    await mem.writeToPool({
+      poolId: 'pool-1', agentId: 'trading-agent',
+      memory: 'x', context: 'trading',
+    });
+    expect(store.memories.length).toBe(1);
   });
 });

@@ -493,3 +493,109 @@ def test_verify_rejects_tampered_signature():
     claim.signature = claim.signature[:-1] + ("1" if last == "0" else "0")
     with pytest.raises(AgentClaimError):
         verify_agent_claim(claim, "trading-agent", claim.public_key)
+
+
+# ─── transfer_pool ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_transfer_pool_promotes_target_demotes_caller(mem_and_store):
+    mem, store = mem_and_store
+    store.members["execution-agent"] = {
+        "pool_id": "pool-1", "agent_id": "execution-agent", "role": "writer",
+        "added_at": "2026-01-01T00:00:00Z",
+    }
+    md = mem._metadata
+    def _update_pool_owner(pool_id, new_owner):
+        store.pool["owner_agent_id"] = new_owner
+        return store.pool
+    md.update_pool_owner = _update_pool_owner
+
+    await mem.transfer_pool("pool-1", "trading-agent", "execution-agent")
+    assert store.members["execution-agent"]["role"] == "owner"
+    assert store.members["trading-agent"]["role"] == "writer"
+    assert store.pool["owner_agent_id"] == "execution-agent"
+
+
+@pytest.mark.asyncio
+async def test_transfer_pool_rejects_non_owner(mem_and_store):
+    mem, store = mem_and_store
+    store.members["execution-agent"] = {
+        "pool_id": "pool-1", "agent_id": "execution-agent", "role": "writer",
+        "added_at": "2026-01-01T00:00:00Z",
+    }
+    with pytest.raises(PermissionError):
+        await mem.transfer_pool("pool-1", "execution-agent", "trading-agent")
+
+
+@pytest.mark.asyncio
+async def test_transfer_pool_rejects_non_member_target(mem_and_store):
+    mem, _ = mem_and_store
+    with pytest.raises(PermissionError):
+        await mem.transfer_pool("pool-1", "trading-agent", "rando")
+
+
+@pytest.mark.asyncio
+async def test_transfer_pool_rejects_self(mem_and_store):
+    from shelmem.client import ValidationError
+    mem, _ = mem_and_store
+    with pytest.raises(ValidationError):
+        await mem.transfer_pool("pool-1", "trading-agent", "trading-agent")
+
+
+# ─── verify_signatures enforcement ────────────────────────────────────────
+
+
+def test_verify_signatures_requires_agent_registry():
+    from shelmem.client import ValidationError
+    with patch("shelmem.supabase_client.create_client"):
+        with pytest.raises(ValidationError):
+            ShelMem(
+                supabase_url="https://fake.supabase.co",
+                supabase_key="fake-key",
+                mock=True,
+                verify_signatures=True,
+            )
+
+
+@pytest.mark.asyncio
+async def test_verify_signatures_rejects_call_without_claim():
+    from shelmem import sign_agent_claim, AgentClaimError
+    claim = sign_agent_claim("trading-agent", PRIV_HEX)
+    with patch("shelmem.supabase_client.create_client") as mc:
+        mc.return_value = MagicMock()
+        mem = ShelMem(
+            supabase_url="https://fake.supabase.co",
+            supabase_key="fake-key",
+            mock=True,
+            verify_signatures=True,
+            agent_registry={"trading-agent": claim.public_key},
+        )
+    with pytest.raises(AgentClaimError):
+        await mem.write_to_pool(WriteToPoolParams(
+            pool_id="pool-1", agent_id="trading-agent",
+            memory="x", context="trading",
+        ))
+
+
+@pytest.mark.asyncio
+async def test_verify_signatures_rejects_impersonation():
+    from shelmem import sign_agent_claim, AgentClaimError
+    real_claim = sign_agent_claim("trading-agent", PRIV_HEX)
+    OTHER_PRIV = "0x" + "aa" * 32
+    attacker_claim = sign_agent_claim("trading-agent", OTHER_PRIV)
+    with patch("shelmem.supabase_client.create_client") as mc:
+        mc.return_value = MagicMock()
+        mem = ShelMem(
+            supabase_url="https://fake.supabase.co",
+            supabase_key="fake-key",
+            mock=True,
+            verify_signatures=True,
+            agent_registry={"trading-agent": real_claim.public_key},
+        )
+    with pytest.raises(AgentClaimError):
+        await mem.write_to_pool(WriteToPoolParams(
+            pool_id="pool-1", agent_id="trading-agent",
+            memory="attack", context="trading",
+            claim=attacker_claim,
+        ))

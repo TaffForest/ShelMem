@@ -176,6 +176,15 @@ class MemoryMetadata:
     def delete_pool(self, pool_id: str) -> None:
         self.client.table("memory_pools").delete().eq("id", pool_id).execute()
 
+    def update_pool_owner(self, pool_id: str, new_owner_agent_id: str) -> dict:
+        result = (
+            self.client.table("memory_pools")
+            .update({"owner_agent_id": new_owner_agent_id})
+            .eq("id", pool_id)
+            .execute()
+        )
+        return result.data[0]
+
     def list_pools_for_agent(self, agent_id: str) -> list[dict]:
         result = (
             self.client.table("pool_members")

@@ -1,11 +1,12 @@
 import { ShelbyStorage, computeHash } from './shelby.js';
 import { MemoryMetadata } from './supabase.js';
 import { PermissionError } from './errors.js';
+import { verifyAgentClaim, AgentClaimError } from './agent-identity.js';
 import type {
   ShelMemConfig, WriteResult, MemoryRecord, MemoryType, VerifyResult,
   SearchResult, TreasuryFields, RecordTransactionParams, RecordBalanceParams,
   Pool, PoolMember, PoolRole, CreatePoolParams, WriteToPoolParams, RecallFromPoolParams,
-  SearchPoolParams, PoolAuditEntry,
+  SearchPoolParams, PoolAuditEntry, AgentClaim,
 } from './types.js';
 
 export type {
@@ -26,6 +27,9 @@ export class ShelMem {
   private storage: ShelbyStorage;
   private metadata: MemoryMetadata;
   private embed?: (text: string) => Promise<number[]>;
+  private agentRegistry?: Record<string, string>;
+  private verifySignatures: boolean;
+  private claimMaxAgeSeconds: number;
 
   constructor(config: ShelMemConfig) {
     this.storage = new ShelbyStorage({
@@ -38,6 +42,36 @@ export class ShelMem {
 
     this.metadata = new MemoryMetadata(config.supabaseUrl, config.supabaseKey);
     this.embed = config.embeddingProvider;
+    this.agentRegistry = config.agentRegistry;
+    this.verifySignatures = config.verifySignatures ?? false;
+    this.claimMaxAgeSeconds = config.claimMaxAgeSeconds ?? 300;
+
+    if (this.verifySignatures && !this.agentRegistry) {
+      throw new Error(
+        'verifySignatures: true requires agentRegistry to map agent_id → publicKey'
+      );
+    }
+  }
+
+  /**
+   * No-op when verifySignatures=false (current trust model).
+   * Otherwise: requires `claim` to match `agentId` and verifies the
+   * Ed25519 signature against agentRegistry[agentId].
+   */
+  private assertClaim(agentId: string, claim?: AgentClaim): void {
+    if (!this.verifySignatures) return;
+    if (!claim) {
+      throw new AgentClaimError(
+        `verifySignatures is enabled — agent '${agentId}' must pass a signed claim`
+      );
+    }
+    const expectedPubKey = this.agentRegistry?.[agentId];
+    if (!expectedPubKey) {
+      throw new AgentClaimError(
+        `agent '${agentId}' has no registered public key in agentRegistry`
+      );
+    }
+    verifyAgentClaim(claim, agentId, expectedPubKey, this.claimMaxAgeSeconds);
   }
 
   /**
@@ -271,13 +305,15 @@ export class ShelMem {
 
   /** Create a pool. The owner is automatically added as a member with role='owner'. */
   async createPool(params: CreatePoolParams): Promise<Pool> {
+    this.assertClaim(params.ownerAgentId, params.claim);
     if (!params.name?.trim()) throw new Error('pool name cannot be empty');
     if (!params.ownerAgentId?.trim()) throw new Error('ownerAgentId cannot be empty');
     return this.metadata.insertPool(params);
   }
 
   /** Get pool metadata. Caller must be a pool member. */
-  async getPool(poolId: string, callerAgentId: string): Promise<Pool> {
+  async getPool(poolId: string, callerAgentId: string, claim?: AgentClaim): Promise<Pool> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner', 'writer', 'reader']);
     const pool = await this.metadata.getPool(poolId);
     if (!pool) throw new Error(`Pool not found: ${poolId}`);
@@ -285,14 +321,44 @@ export class ShelMem {
   }
 
   /** List pools the agent is a member of. */
-  async listPools(agentId: string): Promise<Pool[]> {
+  async listPools(agentId: string, claim?: AgentClaim): Promise<Pool[]> {
+    this.assertClaim(agentId, claim);
     return this.metadata.listPoolsForAgent(agentId);
   }
 
   /** Delete a pool. Owner only. Cascades pool_members; memories' pool_id is set to NULL. */
-  async deletePool(poolId: string, callerAgentId: string): Promise<void> {
+  async deletePool(poolId: string, callerAgentId: string, claim?: AgentClaim): Promise<void> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner']);
     await this.metadata.deletePool(poolId);
+  }
+
+  /**
+   * Transfer pool ownership to an existing member. Caller must be the
+   * current owner. The target is promoted to 'owner' and the previous
+   * owner is demoted to 'writer'.
+   */
+  async transferPool(
+    poolId: string,
+    callerAgentId: string,
+    newOwnerAgentId: string,
+    claim?: AgentClaim
+  ): Promise<Pool> {
+    this.assertClaim(callerAgentId, claim);
+    await this.assertRole(poolId, callerAgentId, ['owner']);
+    if (!newOwnerAgentId?.trim()) throw new Error('newOwnerAgentId cannot be empty');
+    if (newOwnerAgentId === callerAgentId) {
+      throw new Error('newOwnerAgentId is already the owner');
+    }
+    const target = await this.metadata.getMember(poolId, newOwnerAgentId);
+    if (!target) {
+      throw new PermissionError(
+        `Agent '${newOwnerAgentId}' is not a member of pool '${poolId}'`
+      );
+    }
+    await this.metadata.upsertMember(poolId, newOwnerAgentId, 'owner');
+    await this.metadata.upsertMember(poolId, callerAgentId, 'writer');
+    return this.metadata.updatePoolOwner(poolId, newOwnerAgentId);
   }
 
   /** Add or update a member's role in a pool. Owner only. */
@@ -300,8 +366,10 @@ export class ShelMem {
     poolId: string,
     callerAgentId: string,
     targetAgentId: string,
-    role: PoolRole
+    role: PoolRole,
+    claim?: AgentClaim
   ): Promise<PoolMember> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner']);
     if (!targetAgentId?.trim()) throw new Error('targetAgentId cannot be empty');
     return this.metadata.upsertMember(poolId, targetAgentId, role);
@@ -311,8 +379,10 @@ export class ShelMem {
   async removePoolMember(
     poolId: string,
     callerAgentId: string,
-    targetAgentId: string
+    targetAgentId: string,
+    claim?: AgentClaim
   ): Promise<void> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner']);
     const target = await this.metadata.getMember(poolId, targetAgentId);
     if (target?.role === 'owner') {
@@ -322,13 +392,15 @@ export class ShelMem {
   }
 
   /** List all members of a pool. Caller must be a pool member. */
-  async listPoolMembers(poolId: string, callerAgentId: string): Promise<PoolMember[]> {
+  async listPoolMembers(poolId: string, callerAgentId: string, claim?: AgentClaim): Promise<PoolMember[]> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner', 'writer', 'reader']);
     return this.metadata.listMembers(poolId);
   }
 
   /** Write a memory into a shared pool. Caller must be owner or writer. */
   async writeToPool(params: WriteToPoolParams): Promise<WriteResult> {
+    this.assertClaim(params.agentId, params.claim);
     await this.assertRole(params.poolId, params.agentId, ['owner', 'writer']);
 
     const memory_type: MemoryType = params.memory_type ?? 'observation';
@@ -383,6 +455,7 @@ export class ShelMem {
 
   /** Recall memories from a shared pool. Caller must be a pool member. */
   async recallFromPool(params: RecallFromPoolParams): Promise<MemoryRecord[]> {
+    this.assertClaim(params.agentId, params.claim);
     await this.assertRole(params.poolId, params.agentId, ['owner', 'writer', 'reader']);
 
     const rows = await this.metadata.queryPool(
@@ -450,8 +523,10 @@ export class ShelMem {
     agent_id: string,
     context?: string,
     limit: number = 10,
-    memory_type?: MemoryType
+    memory_type?: MemoryType,
+    claim?: AgentClaim
   ): Promise<MemoryRecord[]> {
+    this.assertClaim(agent_id, claim);
     const rows = await this.metadata.querySharedWith(agent_id, context, memory_type, limit);
     const decoder = new TextDecoder();
 
@@ -494,6 +569,7 @@ export class ShelMem {
     if (!this.embed) {
       throw new Error('Semantic search requires an embeddingProvider in config');
     }
+    this.assertClaim(params.agentId, params.claim);
     await this.assertRole(params.poolId, params.agentId, ['owner', 'writer', 'reader']);
 
     const queryEmbedding = await this.embed(params.query);
@@ -522,8 +598,10 @@ export class ShelMem {
   async getPoolAuditLog(
     poolId: string,
     callerAgentId: string,
-    limit: number = 100
+    limit: number = 100,
+    claim?: AgentClaim
   ): Promise<PoolAuditEntry[]> {
+    this.assertClaim(callerAgentId, claim);
     await this.assertRole(poolId, callerAgentId, ['owner']);
     return this.metadata.queryPoolAuditLog(poolId, limit);
   }
