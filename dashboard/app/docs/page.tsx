@@ -9,6 +9,10 @@ const sections = [
   { id: 'quickstart', label: 'Quick Start' },
   { id: 'api', label: 'API Reference' },
   { id: 'treasury', label: 'Agent Treasury' },
+  { id: 'pools', label: 'Shared Pools' },
+  { id: 'acls', label: 'Per-Memory ACLs' },
+  { id: 'audit', label: 'Audit Log' },
+  { id: 'identity', label: 'Agent Identity' },
   { id: 'encryption', label: 'Encryption' },
   { id: 'search', label: 'Semantic Search' },
   { id: 'config', label: 'Configuration' },
@@ -148,6 +152,46 @@ for m in memories:
               params={[['agentId','string','Agent identifier']]}
               returns={[['memory','string','Balance description'],['amount','number','Balance amount'],['currency','string','Currency'],['timestamp','string','When recorded']]}
             />
+            <ApiMethod name="createPool" signature="createPool({ name, ownerAgentId, description?, metadata? })" description="Create a shared memory pool. The owner is automatically added as a member with role 'owner'."
+              params={[['name','string','Pool name'],['ownerAgentId','string','Agent that will own the pool'],['description','string?','Optional description'],['metadata','object?','Optional metadata']]}
+              returns={[['id','string','Pool UUID'],['name','string','Pool name'],['owner_agent_id','string','Owner'],['created_at','string','ISO 8601']]}
+            />
+            <ApiMethod name="addPoolMember" signature="addPoolMember(poolId, callerAgentId, targetAgentId, role)" description="Add or update a member's role. Caller must be the pool owner."
+              params={[['poolId','string','Pool UUID'],['callerAgentId','string','Must have role owner'],['targetAgentId','string','Agent to add'],['role',"'owner'|'writer'|'reader'",'Role to grant']]}
+              returns={[['pool_id','string','Pool UUID'],['agent_id','string','Member agent'],['role','string','Role granted'],['added_at','string','ISO 8601']]}
+            />
+            <ApiMethod name="removePoolMember" signature="removePoolMember(poolId, callerAgentId, targetAgentId)" description="Remove a member. Caller must be the pool owner. The owner cannot be removed."
+              params={[['poolId','string','Pool UUID'],['callerAgentId','string','Must have role owner'],['targetAgentId','string','Agent to remove']]}
+              returns={[]}
+            />
+            <ApiMethod name="listPoolMembers" signature="listPoolMembers(poolId, callerAgentId)" description="List all members of a pool. Caller must be a pool member."
+              params={[['poolId','string','Pool UUID'],['callerAgentId','string','Must be a member']]}
+              returns={[['agent_id','string','Member agent'],['role','string','Role'],['added_at','string','When added']]}
+            />
+            <ApiMethod name="listPools" signature="listPools(agentId)" description="List all pools the agent is a member of."
+              params={[['agentId','string','Agent identifier']]}
+              returns={[['id','string','Pool UUID'],['name','string','Pool name'],['owner_agent_id','string','Owner']]}
+            />
+            <ApiMethod name="writeToPool" signature="writeToPool({ poolId, agentId, memory, context, memory_type?, metadata?, treasury? })" description="Write a memory into a shared pool. Caller must have role 'owner' or 'writer'. Throws PermissionError otherwise."
+              params={[['poolId','string','Pool UUID'],['agentId','string','Caller — must be owner or writer'],['memory','string','Content to store'],['context','string','Category label'],['memory_type','MemoryType?','Default: observation'],['metadata','object?','Optional metadata'],['treasury','TreasuryFields?','Optional { amount, currency, counterparty, tx_status }']]}
+              returns={[['shelby_object_id','string','Shelby address'],['aptos_tx_hash','string','On-chain tx hash'],['content_hash','string','SHA-256 of plaintext'],['memory_type','string','Type stored'],['timestamp','string','ISO 8601']]}
+            />
+            <ApiMethod name="recallFromPool" signature="recallFromPool({ poolId, agentId, context?, limit?, memory_type? })" description="Read memories written into a shared pool by any member. Caller must be a pool member (any role). Each memory is verified against its content hash. Records a 'read' entry in the pool audit log."
+              params={[['poolId','string','Pool UUID'],['agentId','string','Caller — must be a member'],['context','string?','Filter by context'],['limit','number?','Max results (default 10)'],['memory_type','MemoryType?','Filter by type']]}
+              returns={[['memory','string','Content (decrypted, verified)'],['agent_id','string','Which agent wrote it'],['pool_id','string','Pool UUID'],['memory_type','string','Type'],['verified','boolean|null','Hash verification result']]}
+            />
+            <ApiMethod name="recallShared" signature="recallShared(agent_id, context?, limit?, memory_type?)" description="Read memories that were explicitly shared with this agent via the per-memory shared_with ACL — independent of pool membership."
+              params={[['agent_id','string','Agent identifier'],['context','string?','Filter by context'],['limit','number?','Max results (default 10)'],['memory_type','MemoryType?','Filter by type']]}
+              returns={[['memory','string','Content (decrypted, verified)'],['agent_id','string','Original writer'],['shared_with','string[]','ACL list']]}
+            />
+            <ApiMethod name="searchPool" signature="searchPool({ poolId, agentId, query, limit?, threshold? })" description="Semantic search inside a shared pool using pgvector. Caller must be a pool member. Requires an embeddingProvider in config."
+              params={[['poolId','string','Pool UUID'],['agentId','string','Caller — must be a member'],['query','string','Natural language query'],['limit','number?','Max results (default 10)'],['threshold','number?','Min similarity 0-1 (default 0.5)']]}
+              returns={[['id','string','Memory UUID'],['agent_id','string','Writer'],['memory_preview','string','First 200 chars'],['similarity','number','Cosine similarity']]}
+            />
+            <ApiMethod name="getPoolAuditLog" signature="getPoolAuditLog(poolId, callerAgentId, limit?)" description="Read the access log for a pool. Owner only. One row per writeToPool / recallFromPool / searchPool call."
+              params={[['poolId','string','Pool UUID'],['callerAgentId','string','Must have role owner'],['limit','number?','Max entries (default 100)']]}
+              returns={[['action',"'write'|'read'",'Action recorded'],['agent_id','string','Agent that acted'],['memory_id','string|null','Set on writes'],['result_count','number|null','Set on reads'],['created_at','string','ISO 8601']]}
+            />
           </section>
 
           {/* Agent Treasury */}
@@ -206,6 +250,164 @@ for m in memories:
               <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Memory types:</strong> <Code size="1" variant="ghost">transaction_record</Code> · <Code size="1" variant="ghost">balance_snapshot</Code> · <Code size="1" variant="ghost">spending_policy</Code></Text><br/>
               <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>tx_status values:</strong> <Code size="1" variant="ghost">pending</Code> · <Code size="1" variant="ghost">confirmed</Code> · <Code size="1" variant="ghost">failed</Code></Text><br/>
               <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Shelby expiry:</strong> 365 days (vs 30 days for standard memories)</Text>
+            </Card>
+          </section>
+
+          {/* Shared Pools */}
+          <section id="pools" style={{ marginBottom: 56 }}>
+            <Heading size="6" weight="bold" mb="4">Shared Pools</Heading>
+            <Text size="2" color="gray" style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+              Pools are shared memory workspaces. Add agents as members with <Code size="1" variant="ghost">owner</Code>, <Code size="1" variant="ghost">writer</Code>, or <Code size="1" variant="ghost">reader</Code> roles, then any member can read everything written into the pool while role permissions are enforced at the SDK boundary. Use them to coordinate workflows like trading → execution → risk → reporting through a single source of truth.
+            </Text>
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', marginBottom: 12 }}>1. Create a pool and invite collaborators</Text>
+            <Tabs
+              ts={`const pool = await mem.createPool({
+  name: 'market-ops',
+  ownerAgentId: 'trading-agent',
+});
+
+await mem.addPoolMember(pool.id, 'trading-agent', 'execution-agent', 'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'risk-agent',      'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'reporting-agent', 'reader');`}
+              py={`pool = await mem.create_pool(CreatePoolParams(
+    name="market-ops",
+    owner_agent_id="trading-agent",
+))
+
+await mem.add_pool_member(pool.id, "trading-agent", "execution-agent", "writer")
+await mem.add_pool_member(pool.id, "trading-agent", "risk-agent",      "writer")
+await mem.add_pool_member(pool.id, "trading-agent", "reporting-agent", "reader")`}
+            />
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', margin: '24px 0 12px' }}>2. Write into the pool (owner or writer)</Text>
+            <Tabs
+              ts={`await mem.writeToPool({
+  poolId: pool.id, agentId: 'trading-agent',
+  memory: 'RSI=35, buy 500 APT', context: 'trading',
+  memory_type: 'decision',
+});`}
+              py={`await mem.write_to_pool(WriteToPoolParams(
+    pool_id=pool.id, agent_id="trading-agent",
+    memory="RSI=35, buy 500 APT", context="trading",
+    memory_type="decision",
+))`}
+            />
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', margin: '24px 0 12px' }}>3. Read from the pool (any member)</Text>
+            <Tabs
+              ts={`const records = await mem.recallFromPool({
+  poolId: pool.id, agentId: 'reporting-agent',
+});
+// → each record carries agent_id (writer) and pool_id, plus the verified content`}
+              py={`records = await mem.recall_from_pool(RecallFromPoolParams(
+    pool_id=pool.id, agent_id="reporting-agent",
+))`}
+            />
+            <Text size="3" weight="medium" color="lime" style={{ display: 'block', margin: '24px 0 12px' }}>4. Permission errors</Text>
+            <Tabs
+              ts={`import { PermissionError } from '@forestinfra/shelmem';
+
+try {
+  await mem.writeToPool({
+    poolId: pool.id, agentId: 'reporting-agent',
+    memory: 'denied', context: 'trading',
+  });
+} catch (err) {
+  if (err instanceof PermissionError) {
+    // role 'reader' cannot write
+  }
+}`}
+              py={`from shelmem import PermissionError
+
+try:
+    await mem.write_to_pool(WriteToPoolParams(
+        pool_id=pool.id, agent_id="reporting-agent",
+        memory="denied", context="trading",
+    ))
+except PermissionError:
+    pass  # role 'reader' cannot write`}
+            />
+            <Card size="1" variant="surface" mt="3">
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Roles:</strong> <Code size="1" variant="ghost">owner</Code> (manage members + read/write) · <Code size="1" variant="ghost">writer</Code> (read/write) · <Code size="1" variant="ghost">reader</Code> (read only)</Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Membership:</strong> creating a pool auto-adds the owner. The owner cannot be removed; transfer ownership before deletion.</Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Migration:</strong> apply <Code size="1" variant="ghost">supabase/migration-v5.sql</Code> to add <Code size="1" variant="ghost">memory_pools</Code>, <Code size="1" variant="ghost">pool_members</Code>, and the nullable <Code size="1" variant="ghost">pool_id</Code> column on <Code size="1" variant="ghost">memories</Code>. Existing private memories are unaffected.</Text>
+            </Card>
+          </section>
+
+          {/* Per-Memory ACLs */}
+          <section id="acls" style={{ marginBottom: 56 }}>
+            <Heading size="6" weight="bold" mb="4">Per-Memory ACLs</Heading>
+            <Text size="2" color="gray" style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+              Sometimes a memory needs to be shared with specific agents but doesn&apos;t belong in a pool. Pass <Code size="1" variant="ghost">sharedWith</Code> on <Code size="1" variant="ghost">write()</Code> to grant individual agents read access via <Code size="1" variant="ghost">recallShared()</Code>. Pools and ACLs compose: a memory can live in a pool and be additionally shared with agents outside it.
+            </Text>
+            <Tabs
+              ts={`// Writer side
+await mem.write(
+  'trading-agent', 'sensitive insight', 'analysis', 'observation',
+  /* metadata */ undefined, /* treasury */ undefined,
+  /* sharedWith */ ['execution-agent', 'risk-agent'],
+);
+
+// Reader side
+const visible = await mem.recallShared('execution-agent');`}
+              py={`# Writer side
+await mem.write(
+    "trading-agent", "sensitive insight", "analysis", "observation",
+    shared_with=["execution-agent", "risk-agent"],
+)
+
+# Reader side
+visible = await mem.recall_shared("execution-agent")`}
+            />
+            <Card size="1" variant="surface" mt="3">
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Storage:</strong> <Code size="1" variant="ghost">memories.shared_with TEXT[]</Code> with a GIN index. Empty list = private to the writer.</Text>
+            </Card>
+          </section>
+
+          {/* Audit Log */}
+          <section id="audit" style={{ marginBottom: 56 }}>
+            <Heading size="6" weight="bold" mb="4">Pool Audit Log</Heading>
+            <Text size="2" color="gray" style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+              Every <Code size="1" variant="ghost">writeToPool</Code>, <Code size="1" variant="ghost">recallFromPool</Code>, and <Code size="1" variant="ghost">searchPool</Code> call writes a row to <Code size="1" variant="ghost">pool_access_log</Code>. Reads record the result count; writes record the new memory&apos;s id. Pool owners can replay the log to see who read what and when.
+            </Text>
+            <Tabs
+              ts={`const log = await mem.getPoolAuditLog(pool.id, 'trading-agent');
+// → [{ action: 'read',  agent_id: 'reporting-agent', result_count: 3,  created_at },
+//    { action: 'write', agent_id: 'risk-agent',      memory_id: '...', created_at }]`}
+              py={`log = await mem.get_pool_audit_log(pool.id, "trading-agent")`}
+            />
+            <Card size="1" variant="surface" mt="3">
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Access:</strong> owner only — non-owners get <Code size="1" variant="ghost">PermissionError</Code>.</Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Best-effort:</strong> a failed audit insert never blocks the underlying read/write.</Text>
+            </Card>
+          </section>
+
+          {/* Agent Identity */}
+          <section id="identity" style={{ marginBottom: 56 }}>
+            <Heading size="6" weight="bold" mb="4">Cryptographic Agent Identity</Heading>
+            <Text size="2" color="gray" style={{ display: 'block', marginBottom: 16, lineHeight: 1.6 }}>
+              By default <Code size="1" variant="ghost">agent_id</Code> is a trusted string. For production hardening — proving an agent owns its identity — sign claims with the agent&apos;s Aptos Ed25519 private key and verify them at the trust boundary. The primitives are exported; wiring them into RLS or every method call is opt-in (this stays compatible with the trust model already in use).
+            </Text>
+            <Tabs
+              ts={`import { signAgentClaim, verifyAgentClaim } from '@forestinfra/shelmem';
+
+// Agent side: produce a short-lived signed claim
+const claim = signAgentClaim('trading-agent', process.env.AGENT_PRIVATE_KEY);
+// → { agentId, timestamp, publicKey, signature }
+
+// Verifier side: registry maps agent_id → expected pubkey
+const expectedPub = REGISTRY['trading-agent'];
+verifyAgentClaim(claim, 'trading-agent', expectedPub); // throws AgentClaimError on failure`}
+              py={`from shelmem import sign_agent_claim, verify_agent_claim, AgentClaimError
+
+claim = sign_agent_claim("trading-agent", AGENT_PRIVATE_KEY)
+try:
+    verify_agent_claim(claim, "trading-agent", REGISTRY["trading-agent"])
+except AgentClaimError as e:
+    ...`}
+            />
+            <Card size="1" variant="surface" mt="3">
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Algo:</strong> Ed25519 signature over <Code size="1" variant="ghost">{`shelmem:agent-claim:v1\\n{agent_id}\\n{timestamp}`}</Code>.</Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Replay protection:</strong> claims expire after <Code size="1" variant="ghost">maxAgeSeconds</Code> (default 300s).</Text><br/>
+              <Text size="2" color="gray"><strong style={{ color: 'var(--gray-12)' }}>Same key:</strong> the agent&apos;s Aptos key already used for on-chain anchoring works directly — no new keys to issue.</Text>
             </Card>
           </section>
 
@@ -350,7 +552,41 @@ CREATE INDEX idx_memories_created_at ON memories(created_at DESC);
 CREATE INDEX idx_memories_type ON memories(agent_id, memory_type);
 CREATE INDEX idx_memories_embedding ON memories USING hnsw (embedding vector_cosine_ops);
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all" ON memories FOR ALL USING (true) WITH CHECK (true);`}</Pre>
+CREATE POLICY "Allow all" ON memories FOR ALL USING (true) WITH CHECK (true);
+
+-- Shared pools (migration-v5)
+CREATE TABLE memory_pools (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL, description TEXT,
+  owner_agent_id TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE pool_members (
+  pool_id UUID REFERENCES memory_pools(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  role TEXT CHECK (role IN ('owner','writer','reader')),
+  added_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (pool_id, agent_id)
+);
+ALTER TABLE memories ADD COLUMN pool_id UUID
+  REFERENCES memory_pools(id) ON DELETE SET NULL;
+
+-- ACLs + audit log + pool semantic search (migration-v6)
+ALTER TABLE memories ADD COLUMN shared_with TEXT[] DEFAULT '{}';
+CREATE INDEX idx_memories_shared_with ON memories USING gin (shared_with);
+
+CREATE TABLE pool_access_log (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  pool_id UUID REFERENCES memory_pools(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  action TEXT CHECK (action IN ('write','read')),
+  memory_id UUID REFERENCES memories(id) ON DELETE SET NULL,
+  result_count INT, metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+-- Plus the match_pool_memories pgvector RPC — see migration-v6.sql.`}</Pre>
           </section>
 
           {/* Architecture */}

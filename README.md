@@ -104,6 +104,48 @@ const balance = await mem.getLatestBalance('trading-agent');
 
 Treasury memory types: `transaction_record`, `balance_snapshot`, `spending_policy`. Treasury records are stored with 365-day Shelby expiry (vs 30 days for standard memories).
 
+## Shared Multi-Agent Memory
+
+Pools let multiple agents share a memory workspace with role-based permissions (`owner`, `writer`, `reader`). Use them to coordinate workflows like trading → execution → risk → reporting without each agent holding its own siloed memory.
+
+```typescript
+// Owner creates a pool and invites collaborators
+const pool = await mem.createPool({ name: 'market-ops', ownerAgentId: 'trading-agent' });
+await mem.addPoolMember(pool.id, 'trading-agent', 'execution-agent', 'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'reporting-agent', 'reader');
+
+// Any writer can publish into the pool
+await mem.writeToPool({
+  poolId: pool.id, agentId: 'trading-agent',
+  memory: 'RSI=35, buy 500 APT', context: 'trading', memory_type: 'decision',
+});
+
+// Any member can read the pool's memories, regardless of who wrote them
+const records = await mem.recallFromPool({ poolId: pool.id, agentId: 'reporting-agent' });
+```
+
+Run `supabase/migration-v5.sql` to add the `memory_pools` and `pool_members` tables and the `pool_id` column on `memories`. See [examples/multi-agent-pool.mjs](examples/multi-agent-pool.mjs) for the full four-agent flow.
+
+### Layered features (apply `migration-v6.sql`)
+
+```typescript
+// Per-memory ACLs — share a single memory with specific agents
+await mem.write('trading-agent', 'sensitive insight', 'analysis', 'observation',
+  undefined, undefined, ['execution-agent', 'risk-agent']);
+const visible = await mem.recallShared('execution-agent');
+
+// Pool semantic search (requires embeddingProvider)
+await mem.searchPool({ poolId, agentId: 'reporting-agent', query: 'market context' });
+
+// Pool audit log — owner only
+const log = await mem.getPoolAuditLog(poolId, 'trading-agent');
+
+// Cryptographic agent identity — opt-in, same Aptos key
+import { signAgentClaim, verifyAgentClaim } from '@forestinfra/shelmem';
+const claim = signAgentClaim('trading-agent', AGENT_PRIVATE_KEY);
+verifyAgentClaim(claim, 'trading-agent', registry['trading-agent']);
+```
+
 ## Environment Variables
 
 ```bash
@@ -126,7 +168,7 @@ NEXT_PUBLIC_APTOS_NETWORK=testnet
 
 ## Database Setup
 
-Run `supabase/schema.sql` in your Supabase SQL Editor to create the `memories` table with indexes and RLS policies.
+Run `supabase/schema.sql` in your Supabase SQL Editor to create the `memories` table with indexes and RLS policies. Then apply migrations in order: `migration-v2.sql`, `migration-v3.sql`, `migration-v4.sql` (treasury fields), `migration-v5.sql` (shared memory pools), and `migration-v6.sql` (per-memory ACLs, audit log, pool semantic search).
 
 ## Dashboard
 

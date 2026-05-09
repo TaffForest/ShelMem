@@ -118,6 +118,25 @@ result = await mem.write("my-agent", "User likes dark mode", "preferences", "pre
 memories = await mem.recall("my-agent")
 ```
 
+## 7. Share memory between agents (optional)
+
+Apply `supabase/migration-v5.sql` to add pool tables, then create a pool and invite collaborators with roles:
+
+```typescript
+const pool = await mem.createPool({ name: 'market-ops', ownerAgentId: 'trading-agent' });
+await mem.addPoolMember(pool.id, 'trading-agent', 'execution-agent', 'writer');
+await mem.addPoolMember(pool.id, 'trading-agent', 'reporting-agent', 'reader');
+
+await mem.writeToPool({
+  poolId: pool.id, agentId: 'trading-agent',
+  memory: 'RSI=35, buy 500 APT', context: 'trading', memory_type: 'decision',
+});
+
+const records = await mem.recallFromPool({ poolId: pool.id, agentId: 'reporting-agent' });
+```
+
+See [examples/multi-agent-pool.mjs](examples/multi-agent-pool.mjs) for the full trading → execution → risk → reporting flow.
+
 ## What's next
 
 - [Full docs](/docs) — API reference, framework integrations, architecture
