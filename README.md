@@ -6,9 +6,9 @@
 [![Shelby Testnet](https://img.shields.io/badge/Shelby-Testnet_Live-8BC53F)](https://shelby.xyz)
 [![Aptos](https://img.shields.io/badge/Aptos-On--chain_Proof-4FD1C5)](https://aptos.dev)
 
-Decentralised AI agent memory — powered by Shelby Protocol and Aptos.
+The coordination layer for multi-agent systems — powered by Shelby Protocol and Aptos.
 
-ShelMem gives your AI agents persistent, verifiable memory. Every memory is stored on Shelby's decentralised hot storage network and anchored on-chain via Aptos, providing cryptographic proof that a memory existed at a specific moment in time.
+ShelMem gives your AI agents persistent, verifiable, *shared* memory. Pools let multiple agents collaborate through one workspace with owner / writer / reader roles. Per-memory ACLs handle the one-off cases. Every read and write is audit-logged. Every memory is content-hashed and anchored on-chain — tamper-proof by construction.
 
 ## Architecture
 

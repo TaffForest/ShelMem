@@ -4,8 +4,8 @@ import './globals.css';
 import { Theme } from '@radix-ui/themes';
 
 export const metadata: Metadata = {
-  title: 'ShelMem — Decentralised Agent Memory',
-  description: 'Tamper-proof, encrypted, searchable memory for AI agents. Powered by Shelby Protocol and Aptos.',
+  title: 'ShelMem — The Coordination Layer for Multi-Agent Systems',
+  description: 'Shared memory pools, role-based permissions, per-memory ACLs, audit logs, and a built-in treasury. Verifiable, encrypted, on-chain — for AI agents that coordinate and transact.',
 };
 
 export default function RootLayout({

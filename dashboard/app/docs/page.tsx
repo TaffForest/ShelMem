@@ -61,7 +61,7 @@ export default function DocsPage() {
         {/* Content */}
         <Box style={{ flex: 1, padding: '48px 32px 80px', maxWidth: 820 }}>
           <Heading size="8" weight="bold" style={{ marginBottom: 8 }}>Documentation</Heading>
-          <Text size="4" color="gray" style={{ display: 'block', marginBottom: 48 }}>Tamper-proof, encrypted, searchable memory for AI agents.</Text>
+          <Text size="4" color="gray" style={{ display: 'block', marginBottom: 48 }}>Shared, verifiable memory for multi-agent systems. Pools, ACLs, audit logs, and a built-in treasury — all on-chain.</Text>
 
           {/* Quick Start */}
           <section id="quickstart" style={{ marginBottom: 56 }}>

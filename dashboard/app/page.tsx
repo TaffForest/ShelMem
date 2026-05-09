@@ -42,11 +42,11 @@ export default function Landing() {
 
         <motion.div className="hero-content" initial="hidden" animate="visible" variants={stagger}>
           <motion.h1 className="hero-title" variants={fadeUp} custom={0}>
-            The memory layer<br />for <span>AI agent payments</span>
+            The coordination layer<br />for <span>multi-agent systems</span>
           </motion.h1>
           <motion.p className="hero-subtitle" variants={fadeUp} custom={1}>
-            Tamper-proof, encrypted agent memory with built-in treasury.<br />
-            Record transactions, verify balances, prove what your agent knew.
+            Shared memory pools, role-based permissions, and a built-in treasury.<br />
+            Trading writes, execution reads, risk validates, reporting archives — all verifiable, all on-chain.
           </motion.p>
           <motion.div className="hero-install-row" variants={fadeUp} custom={2}>
             <code className="install-pill">npm install @forestinfra/shelmem</code>
@@ -97,19 +97,19 @@ export default function Landing() {
             <motion.h2 className="features-title" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
               Why ShelMem?
             </motion.h2>
-            <p className="features-sub">Verifiable memory for agents that handle money.</p>
+            <p className="features-sub">Shared, verifiable memory for agents that coordinate and transact.</p>
           </div>
           <motion.div className="features-grid" initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-100px' }} variants={stagger}>
             {[
-              { title: 'Tamper-proof verification', desc: 'SHA-256 content hash on every write. On recall, content is re-verified against the hash. Tampered memories are flagged instantly — critical for financial records.' },
-              { title: 'Agent treasury', desc: 'Record transactions, balance snapshots, and spending policies. Built-in methods for the AI agent payments use case with 365-day retention.' },
               { title: 'Shared multi-agent memory', desc: 'Pools let agents share a memory workspace with owner / writer / reader roles. Trading writes, execution reads, risk validates, reporting archives — all through one source of truth.' },
               { title: 'Per-memory ACLs', desc: 'sharedWith on every write — grant individual agents read access without putting the memory in a pool. Pools and ACLs compose for fine-grained control.' },
               { title: 'Pool audit log', desc: 'Every read and write into a shared pool is logged. Pool owners can replay who-read-what-and-when. Best-effort, never blocks the underlying call.' },
               { title: 'Cryptographic agent identity', desc: 'Ed25519 sign / verify primitives so agents can prove they own an agent_id without a service-role key. Same Aptos key already used for on-chain anchoring.' },
-              { title: 'AES-256-GCM encryption', desc: 'End-to-end encryption. Memories are encrypted before upload to Shelby. Key derived from your Aptos private key — zero additional secrets.' },
+              { title: 'Agent treasury', desc: 'Record transactions, balance snapshots, and spending policies. Built-in methods for the AI agent payments use case with 365-day retention.' },
+              { title: 'Tamper-proof verification', desc: 'SHA-256 content hash on every write. On recall, content is re-verified against the hash. Tampered memories are flagged instantly — critical for financial records.' },
               { title: 'On-chain anchoring', desc: 'Every memory write submits an Aptos transaction. Cryptographic proof that a transaction record or balance existed at that exact moment.' },
-              { title: 'Semantic search', desc: 'pgvector embeddings stored alongside memories. Search by meaning — find related transactions or decisions without exact keyword matching.' },
+              { title: 'AES-256-GCM encryption', desc: 'End-to-end encryption. Memories are encrypted before upload to Shelby. Key derived from your Aptos private key — zero additional secrets.' },
+              { title: 'Semantic search', desc: 'pgvector embeddings stored alongside memories — across private memories or scoped to a pool. Search by meaning, not keywords.' },
               { title: 'Decentralised storage', desc: "Content lives on Shelby Protocol's distributed hot storage. No single point of failure, no central database to compromise." },
               { title: 'Framework adapters', desc: 'Drop-in integrations for LangChain, CrewAI, Vercel AI SDK, and Coinbase AgentKit. Works with your existing agent stack.' },
               { title: 'TypeScript & Python', desc: 'Published on npm and PyPI. Same API, same verification, same encryption — both ecosystems, first-class support.' },
