@@ -9,6 +9,7 @@ import WalletProvider from '@/components/WalletProvider';
 import TestnetBanner from '@/components/TestnetBanner';
 import WalletConnect from '@/components/WalletConnect';
 import CopyButton from '@/components/CopyButton';
+import DashboardNav from '@/components/DashboardNav';
 
 interface Pool {
   id: string;
@@ -121,8 +122,7 @@ export default function PoolsPage() {
           <Text size="1" color="gray" style={{ display: 'block', marginTop: 2 }}>Shared Pools</Text>
         </Box>
         <Flex align="center" gap="3">
-          <Link href="/dashboard"><Text size="2" color="gray" style={{ cursor: 'pointer' }}>← Memories</Text></Link>
-          <Link href="/dashboard/treasury"><Text size="2" color="gray" style={{ cursor: 'pointer' }}>Treasury</Text></Link>
+          <DashboardNav />
           <WalletConnect onConnect={setWalletAddress} />
         </Flex>
       </Flex>
